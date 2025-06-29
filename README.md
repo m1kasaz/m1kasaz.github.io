@@ -2,7 +2,7 @@
 
 hexo框架参考: [sal-qianqian.icu](https://sal-qianqian.icu)
 
-主题配置参考: [https://butterfly.js.org/](https://butterfly.js.org/)Add commentMore actions
+主题配置参考: [https://butterfly.js.org/](https://butterfly.js.org/)
 
 评论区: [https://waline.js.org/guide/get-started/](https://waline.js.org/guide/get-started/)
 
