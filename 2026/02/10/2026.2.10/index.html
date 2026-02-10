@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>CI/CD | m1kasaz</title><meta name="author" content="m1kasaz"><meta name="copyright" content="m1kasaz"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="主播最近也是get到一个新的爱好就是健身，可能最近会专门开一篇健身专题吧hahahh 😚 😚 博客荒废了好久，主要是主播实习结束完后给自己放了一个月的假，最近要收收心自律起来了 ☺️ 分享一下最近学到的一个新概念，CI&#x2F;CD持续集成，我们做后端的呢，可不能写完项目commit就完事了，我们也要了解软件部署上线的一整个流程。 那正常来说，在多个人协作的情况下，我们一般用一个git仓库来管理我们的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CI&#x2F;CD">
+<meta property="og:url" content="http://m1kasaz.github.io/2026/02/10/2026.2.10/index.html">
+<meta property="og:site_name" content="m1kasaz">
+<meta property="og:description" content="主播最近也是get到一个新的爱好就是健身，可能最近会专门开一篇健身专题吧hahahh 😚 😚 博客荒废了好久，主要是主播实习结束完后给自己放了一个月的假，最近要收收心自律起来了 ☺️ 分享一下最近学到的一个新概念，CI&#x2F;CD持续集成，我们做后端的呢，可不能写完项目commit就完事了，我们也要了解软件部署上线的一整个流程。 那正常来说，在多个人协作的情况下，我们一般用一个git仓库来管理我们的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png">
+<meta property="article:published_time" content="2026-02-09T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-02-10T08:40:35.788Z">
+<meta property="article:author" content="m1kasaz">
+<meta property="article:tag" content="dialog">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "CI/CD",
+  "url": "http://m1kasaz.github.io/2026/02/10/2026.2.10/",
+  "image": "https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png",
+  "datePublished": "2026-02-09T16:00:00.000Z",
+  "dateModified": "2026-02-10T08:40:35.788Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "m1kasaz",
+      "url": "http://m1kasaz.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://m1kasaz.github.io/2026/02/10/2026.2.10/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'CI/CD',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">9</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">m1kasaz</span></a><a class="nav-page-title" href="/"><span class="site-name">CI/CD</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">CI/CD</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-02-09T16:00:00.000Z" title="发表于 2026-02-10 00:00:00">2026-02-10</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-02-10T08:40:35.788Z" title="更新于 2026-02-10 16:40:35">2026-02-10</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">663</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>1分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>主播最近也是get到一个新的爱好就是健身，可能最近会专门开一篇健身专题吧hahahh 😚 😚</p>
+<p>博客荒废了好久，主要是主播实习结束完后给自己放了一个月的假，最近要收收心自律起来了 ☺️</p>
+<p>分享一下最近学到的一个新概念，CI/CD持续集成，我们做后端的呢，可不能写完项目commit就完事了，我们也要了解软件部署上线的一整个流程。</p>
+<p>那正常来说，在多个人协作的情况下，我们一般用一个git仓库来管理我们的代码，功能提交后交给我的mentor简单检查后合并（我实习的时候是这样的），然后测试在生产环境测一遍，没毛病以后我的mentor会编译打包然后发布上线，这是很麻烦的呀，每个新功能都要走一遍这个流程，甚至我们写好的代码不可能一遍就写好吧，万一测试没问题，到线上除了问题又要回退，到时候又要编译打包，这也太麻烦了（我的mentor忙得都没时间带我了），这时候CI/CD这样一个概念就孕育而生了。</p>
+<p>CI持续集成：开发提交代码后自动进行构建、单元测试。监控我们的git仓库，如果有提交、合并操作，他会自动帮我们进行测试（用到自动化测试，需要测试人员编写），然后将测试结果反馈给开发人员。</p>
+<p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260210161854923.png" alt="image-20260210161854923"></p>
+<p>CD持续交付：不断交付软件的新版本。正常来说第一次测试只是一些简单的单元测试，检测一下这个功能代码的可用性，现在我们要将经过单元测试的项目部署到一个类生产环境中，给质量团队或者测试用户进行更加仿真的测试。</p>
+<p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/51ccae513217147746a202b1ff939d98.png" alt="51ccae513217147746a202b1ff939d98"></p>
+<p>完成这一切后，流水线将其自动部署在生产环境中供用户使用。下面是传统方式和CI/CD自动化方式的简单类比。</p>
+<p><strong>没有 CI/CD（手工作坊）：</strong> 大家各自造零件，最后堆在一起，发现轮子装不上，发动机打不着火，大家在大通铺里通宵修修补补，最后手工推给客户。</p>
+<p><strong>有 CI/CD（自动化流水线）：</strong> 零件一放上传送带，机器自动检测尺寸（CI），自动组装，自动喷漆，一旦发现次品立刻报警停机。合格的汽车自动开出工厂交付给客户（CD）。</p>
+<p>tk u ❤</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io">m1kasaz</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io/2026/02/10/2026.2.10/">http://m1kasaz.github.io/2026/02/10/2026.2.10/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://m1kasaz.github.io" target="_blank">m1kasaz</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/dialog/">dialog</a></div><div class="post-share"><div class="social-share" data-image="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/09/09/2025.9.09/" title="m1kasaz的Netty笔记"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">m1kasaz的Netty笔记</div></div><div class="info-2"><div class="info-item-1">BIO模型和NIO模型 两个模型都是很常见的Java网络模型 BIO模型：同步阻塞模型，一个线程专门负责一个连接，数据以流的形式传输 NIO模型：同步非阻塞模型，一个线程负责多个连接，其功能被多个组件分摊，Channel为双方提供双向的通信通道，读写数据都要通过Buffer，Selector可以实现高效的多路复用器 两个模型就好比不同餐厅的招待方式，BIO的餐厅就像一位服务员专门负责一桌客人，而且会一直等待客人的命令；NIO餐厅则是一位服务员负责多桌客人，而且只要你不点餐（数据没准备好），我就不会在你的桌前停留 BIO策略只适合连接数量不多，且连接时间较长的情况，过多的连接将导致线程数量过多导致OOM NIO策略下，一个线程被赋予处理多个请求的能力，并发量大大提高 NIO性能很高，为什么我们不直接使用它呢？ 答：开发效率不高，使用NIO直接进行开发，开发者需要应付这些问题：   Selector 的复杂性：Selector 是 NIO 的核心，但其使用方式反直觉。你需要在一个循环中轮询（select()）事件，然后遍历 selected keys，并针对每个 key...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/02/10/2026.2.10/" title="CI/CD"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CI/CD"/></a><div class="content"><a class="title" href="/2026/02/10/2026.2.10/" title="CI/CD">CI/CD</a><time datetime="2026-02-09T16:00:00.000Z" title="发表于 2026-02-10 00:00:00">2026-02-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/09/09/2025.9.09/" title="m1kasaz的Netty笔记"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="m1kasaz的Netty笔记"/></a><div class="content"><a class="title" href="/2025/09/09/2025.9.09/" title="m1kasaz的Netty笔记">m1kasaz的Netty笔记</a><time datetime="2025-09-08T16:00:00.000Z" title="发表于 2025-09-09 00:00:00">2025-09-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/08/30/2025.8.30/" title="EXPLAIN关键字"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250830000110661.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="EXPLAIN关键字"/></a><div class="content"><a class="title" href="/2025/08/30/2025.8.30/" title="EXPLAIN关键字">EXPLAIN关键字</a><time datetime="2025-08-29T16:00:00.000Z" title="发表于 2025-08-30 00:00:00">2025-08-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/07/30/2025.7.30/" title="MySQL索引优化"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E3%80%90%E5%93%B2%E9%A3%8E%E5%A3%81%E7%BA%B8%E3%80%91%E5%8A%A8%E6%BC%AB%E5%9C%BA%E6%99%AF-%E5%B0%8F%E6%96%B0.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="MySQL索引优化"/></a><div class="content"><a class="title" href="/2025/07/30/2025.7.30/" title="MySQL索引优化">MySQL索引优化</a><time datetime="2025-07-29T16:00:00.000Z" title="发表于 2025-07-30 00:00:00">2025-07-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/07/25/2025.7.25/" title="业务功能--优惠券秒杀(优化)"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E3%80%90%E5%93%B2%E9%A3%8E%E5%A3%81%E7%BA%B8%E3%80%91%E5%8A%A8%E6%BC%AB%E8%A7%92%E8%89%B2-%E5%8D%A1%E9%80%9A%E5%9C%BA%E6%99%AF.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="业务功能--优惠券秒杀(优化)"/></a><div class="content"><a class="title" href="/2025/07/25/2025.7.25/" title="业务功能--优惠券秒杀(优化)">业务功能--优惠券秒杀(优化)</a><time datetime="2025-07-24T16:00:00.000Z" title="发表于 2025-07-25 00:00:00">2025-07-25</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20250910231102653.png);"><div id="footer-wrap"><div class="copyright">&copy;2025 - 2026 By m1kasaz</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text"><i class="fa-brands fa-gratipay"></i></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  let initFn = window.walineFn || null
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const destroyWaline = ele => ele.destroy()
+
+  const initWaline = (Fn, el = document, path = window.location.pathname) => {
+    const waline = Fn({
+      el: el.querySelector('#waline-wrap'),
+      serverURL: 'https://waline.m1kasaz.top/',
+      pageview: false,
+      dark: 'html[data-theme="dark"]',
+      comment: false,
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyWaline = () => {
+        destroyWaline(waline)
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const loadWaline = (el, path) => {
+    if (initFn) initWaline(initFn, el, path)
+    else {
+      btf.getCSS('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.css')
+        .then(() => import('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.js'))
+        .then(({ init }) => {
+          initFn = init || Waline.init
+          initWaline(initFn, el, path)
+          window.walineFn = initFn
+        })
+    }
+  }
+
+  if (isShuoshuo) {
+    'Waline' === 'Waline'
+      ? window.shuoshuoComment = { loadComment: loadWaline } 
+      : window.loadOtherComment = loadWaline
+    return
+  }
+
+  if ('Waline' === 'Waline' || !false) {
+    if (false) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+    else setTimeout(loadWaline, 0)
+  } else {
+    window.loadOtherComment = loadWaline
+  }
+})()</script></div><div class="aplayer no-destroy" data-id="8505096637" data-server="tecent" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/metingjs/dist/Meting.min.js"></script><script>(() => {
+  const destroyAplayer = () => {
+    if (window.aplayers) {
+      for (let i = 0; i < window.aplayers.length; i++) {
+        if (!window.aplayers[i].options.fixed) {
+          window.aplayers[i].destroy()
+        }
+      }
+    }
+  }
+
+  const runMetingJS = () => {
+    typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+  }
+
+  btf.addGlobalFn('pjaxSend', destroyAplayer, 'destroyAplayer')
+  btf.addGlobalFn('pjaxComplete', loadMeting, 'runMetingJS')
+})()</script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true 
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
