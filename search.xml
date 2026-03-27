@@ -4,9 +4,199 @@
   
     
     <entry>
-      <title>消息队列小专题</title>
-      <link href="/2026/02/14/2025.2.14/"/>
-      <url>/2026/02/14/2025.2.14/</url>
+      <title>2026.3.26</title>
+      <link href="/2026/03/26/2026.3.26/"/>
+      <url>/2026/03/26/2026.3.26/</url>
+      
+        <content type="html"><![CDATA[<p><strong>如果xxx宕机了怎么办</strong>（以redis服务宕机为例）</p><ol><li>宕机中：这个阶段主要就看兜底策略能帮助服务缓解多大压力了。比如设置多级缓存，在宕机过程中还能顶住一部分流量。比如开启熔断，降低数据库压力，走降级策略。比如设置好互斥锁，当缓存挂了，请求需要获取锁才能访问数据库。</li><li>预防：通过一些手段预防宕机。比如建立集群。</li></ol><p><strong>tomcat是什么，有什么用</strong></p><p>sevlet容器，用于部署基于sevlet的应用程序，如springboot、spring。</p><p>它可以将java程序看不懂的http请求封装成对象，并且选择合适的sevlet去处理这个请求</p><p><strong>MVC是什么</strong></p><p>M是model：处理业务逻辑，跟数据库进行交互</p><p>V是view：我们能看到的视图层，负责与用户交互</p><p>C是controller：负责接收view的请求，选择合适的model处理</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>2026.3.25</title>
+      <link href="/2026/03/25/2026.3.25/"/>
+      <url>/2026/03/25/2026.3.25/</url>
+      
+        <content type="html"><![CDATA[<p><strong>面向对象的三大思想</strong></p><p>封装：将事物的属性和行为封装为实体，对外隐藏实现，只暴露其接口</p><p>继承：对事物本质的抽象，实现了代码的复用</p><p>多态：一个接口或方法可以有多个实现，提高灵活性</p><p><strong>guava cache</strong></p><p>过期分为写入后过期和访问后过期</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">LoadingCache&lt;String, String&gt; userCache = CacheBuilder.newBuilder()</span><br><span class="line">    <span class="comment">// 设置并发级别，允许同时写缓存的线程数</span></span><br><span class="line">    .concurrencyLevel(<span class="number">8</span>) </span><br><span class="line">    <span class="comment">// 设置缓存初始容量</span></span><br><span class="line">    .initialCapacity(<span class="number">100</span>)</span><br><span class="line">    <span class="comment">// 最大容量限制</span></span><br><span class="line">    .maximumSize(<span class="number">5000</span>)</span><br><span class="line">    <span class="comment">// 写入 30 分钟后过期</span></span><br><span class="line">    .expireAfterWrite(<span class="number">30</span>, TimeUnit.MINUTES)</span><br><span class="line">    <span class="comment">// 开启统计功能（可以监控命中率等）</span></span><br><span class="line">    .recordStats()</span><br><span class="line">    <span class="comment">// 设置移除监听器（当缓存被清理时触发）</span></span><br><span class="line">    .removalListener(notification -&gt; &#123;</span><br><span class="line">        System.out.println(notification.getKey() + <span class="string">&quot; 因 &quot;</span> + notification.getCause() + <span class="string">&quot; 被移除&quot;</span>);</span><br><span class="line">    &#125;)</span><br><span class="line">    .build(<span class="keyword">new</span> <span class="title class_">CacheLoader</span>&lt;String, String&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> String <span class="title function_">load</span><span class="params">(String key)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">            <span class="keyword">return</span> getFromDatabase(key); <span class="comment">// 缓存不命中时的加载逻辑</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br></pre></td></tr></table></figure><p><strong>基于redisson实现的布隆过滤器</strong></p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">redissonBloom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">Config</span> <span class="variable">config</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Config</span>();</span><br><span class="line">    config.useSingleServer().setAddress(<span class="string">&quot;redis://127.0.0.1:6379&quot;</span>);</span><br><span class="line">    <span class="type">RedissonClient</span> <span class="variable">redisson</span> <span class="operator">=</span> Redisson.create(config);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取布隆过滤器对象</span></span><br><span class="line">    RBloomFilter&lt;String&gt; bloomFilter = redisson.getBloomFilter(<span class="string">&quot;userList&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 初始化：预期插入量 100万，误差率 3%</span></span><br><span class="line">    bloomFilter.tryInit(<span class="number">1000000L</span>, <span class="number">0.03</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 插入并校验</span></span><br><span class="line">    bloomFilter.add(<span class="string">&quot;user123&quot;</span>);</span><br><span class="line">    System.out.println(bloomFilter.contains(<span class="string">&quot;user123&quot;</span>)); <span class="comment">// true</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p><strong>http和https的区别</strong></p><p>端口号，http是明文，https数据对称加密、密钥非对称加密</p><p>https的连接过程：client hello - server hello - 验证证书 - 交换密钥 - 生成对话密钥</p><p><strong>osi模型</strong></p><p>物理-数据链路-网络-传输-会话-表示-应用</p><p>比特流传输-封装成帧、差错检测（arp）-寻址（ip、osfp、rip）- 传输（tcp、udp） - 应用程序间通话 - 数据的解压缩、加解密 - 直接提供网络服务</p><p><strong>synchronize的机制</strong></p><p>分为代码块和方法锁，如果执行代码块会调用enter和exit方法，方法锁会设置方法的状态为有锁，等待隐式调用，monitor维护四个属性：oner、waitset、entryset、count，执行到enter方法后会尝试将oner设置为当前线程，失败则进入entryset，成功则count设置为1，执行exit指令后唤醒entryset，waitset中的线程通过wait方法进入，通过notify方法唤醒</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>2026.3.23</title>
+      <link href="/2026/03/23/2026.3.23/"/>
+      <url>/2026/03/23/2026.3.23/</url>
+      
+        <content type="html"><![CDATA[<p><strong>点赞系统的实现</strong></p><p>技术：redis hash/set</p><p>业务：判断文章的点赞set中有无该用户id，没有就是点赞，有就是取消点赞</p><p>问题：数据库与redis的一致性（异步写/同步锁）、大key问题（拆分set）</p><p><strong>签到系统的实现</strong></p><p>技术：redis bitmap</p><p>业务：每个用户按月维护的bitmap，获取连续的签到市场需从当前日期开始向前遍历直到第一个0</p><p>问题：大量bitmap也占内存（mysql持久化）、跨月统计（遇到月初继续递归上一个月）、时区问题（依赖统一的UTC时间）</p><p>使用netty作为底层的通讯架构，在此基础上封装了很多消息类型，用于实现如服务注册、心跳检测、消息订阅等功能</p><p>仿照小红书开发的社交购物平台，主要基于redis实现了各种社交功能</p><p><strong>平台优化点</strong></p><ol><li>限流：原本是滑动窗口算法的非原子性实现，后改为令牌桶＋lua脚本的原子性实现。优化考虑点：1.原方案无法保持原子性 2.滑动窗口针对请求次数限流，令牌桶可以比较tokens限流 3.令牌桶支持突发流量，滑动窗口不支持</li><li>缓存：原本是guava cache＋opensearch作的一个多级缓存，后更新为基于guava+etcd的CDC链路，保证更新的实时性。1.无需复杂的查询条件 2.通道数量不多</li></ol><p><strong>@transational事务失效场景</strong></p><ol><li>内部调用</li><li>业务有异未抛出</li><li>非public修饰</li><li>分布式事务</li><li>数据库不支持事务</li></ol><p><strong>如何介绍项目</strong></p><p>项目主体是springboot单体架构，利用redis做缓存和限流，resttemplate进行远程调用，kafka负责写日志和计费，etcd负责配置监听。</p><p>调用链路大致上是：请求进来先走过滤器，获取请求信息（ip、requestid、url、requestTime），然后进行ak验证，然后选通道，判断限流，调用api，前后进行一些敏感词过滤，最后写入mongo（备份）和kafka，进行持久化和计费</p><p>ak验证：设计guava和redis 的多级缓存，本地获取后会写入redis，ak先去本地找，没有就去redis，再没有就调用</p><p>通道选择：优先长文本、前缀推荐、复用，负载均衡和随机选择是兜底</p><p>通道缓存：本地etcd监听配置变动，如果mysql写入成功，这个信息会同步到etcd（文件式的存储方式），如passageway/100011为key，对应value就是json数据。通道里面存了大量数据（名称、模型、端点、限流、tpm、rpm、标签）</p><p>敏感词过滤：通过前缀树优化过滤过程，远程敏感词信息的获取，思路跟通道缓存的获取差不多</p><p>计费与日志的写入：数据备份至mongo，日志数据通过kafka持久化至mysql和opensearch中。消费积压：计算消息从产生到当前时间的差值，如果持续增大，证明消费正在积压；丢包情况：记录producer端发送数量和consumer端落盘数量，在redis还能看到消费失败的消息</p><p><strong>实习期间做的一件比较有挑战的事</strong></p><p>说一下我这个CDC链路的设计和实现。mentor让我重新设计一下这个多级缓存的方案，主要考虑缓存的一个时效性问题。原方案是这样的，本地的每次请求都需要获取通道信息（本地-&gt;opensearch-&gt;数据中台），获取了以后将这些通道信息同步到opensearch中。现更新为本地配置监听器，基于etcd进行配置监听，数据一更新就通知本地，进行获取，并设置定时任务进行补偿。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>2026.3.21</title>
+      <link href="/2026/03/21/2026.3.21/"/>
+      <url>/2026/03/21/2026.3.21/</url>
+      
+        <content type="html"><![CDATA[<blockquote><p>Problem: <a href="https://leetcode.cn/problems/game-of-life/description/">289. 生命游戏</a></p></blockquote><p>思路</p><blockquote><p>难点在于题目要求根据当前情况直接得出变化后的情况，但程序肯定需要一个个遍历。 考虑四种状态：0-死细胞，1-活细胞，MAX_VALUE-要活的死细胞，MIN_VALUE-要死的活细胞</p></blockquote><p>解题过程</p><blockquote><p>先遍历一个位置的8个方位，判断细胞所处的状态。 再遍历每个位置的状态，转变不稳定状态的细胞。</p></blockquote><p>复杂度</p><ul><li>时间复杂度: $ O(n*m)   $</li><li>空间复杂度: $O(1)$</li></ul><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">class Solution &#123;</span><br><span class="line">    public void gameOfLife(int[][] board) &#123;</span><br><span class="line">        int[][] dir = new int[][]&#123;&#123;-1,-1&#125;,&#123;-1,0&#125;,&#123;-1,1&#125;,&#123;0,1&#125;,&#123;1,1&#125;,&#123;1,0&#125;,&#123;1,-1&#125;,&#123;0,-1&#125;&#125;;</span><br><span class="line">        int m = board.length;</span><br><span class="line">        int n = board[0].length;</span><br><span class="line">        for (int i = 0; i &lt; m; i++) &#123;</span><br><span class="line">            for (int j = 0; j &lt; n; j++) &#123;</span><br><span class="line">                int cnt = 0;</span><br><span class="line">                for (int[] d : dir)&#123;</span><br><span class="line">                    int ni = d[0] + i;</span><br><span class="line">                    int nj = d[1] + j;</span><br><span class="line">                    if(ni &gt;= 0 &amp;&amp; nj &gt;= 0 &amp;&amp; ni &lt; m &amp;&amp; nj &lt; n) &#123;</span><br><span class="line">                        if(board [ni][nj] == 1 || board [ni][nj] == Integer.MIN_VALUE) &#123;</span><br><span class="line">                            cnt++;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                if((cnt &lt; 2 || cnt &gt; 3) &amp;&amp; board [i][j] == 1) &#123;</span><br><span class="line">                    board [i][j] = Integer.MIN_VALUE;</span><br><span class="line">                &#125; else if((cnt == 2 || cnt == 3) &amp;&amp; board [i][j] == 1) &#123;</span><br><span class="line">                    board [i][j] = 1;</span><br><span class="line">                &#125; else if(cnt == 3 &amp;&amp; board [i][j] == 0) &#123;</span><br><span class="line">                    board [i][j] = Integer.MAX_VALUE;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        for (int i = 0; i &lt; m; i++) &#123;</span><br><span class="line">            for (int j = 0; j &lt; n; j++) &#123;</span><br><span class="line">                if(board [i][j] == Integer.MIN_VALUE)&#123;</span><br><span class="line">                    board [i][j] = 0;</span><br><span class="line">                &#125; else if(board [i][j] == Integer.MAX_VALUE) &#123;</span><br><span class="line">                    board [i][j] = 1;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>2026.3.18</title>
+      <link href="/2026/03/18/2026.3.18/"/>
+      <url>/2026/03/18/2026.3.18/</url>
+      
+        <content type="html"><![CDATA[<p><strong>简单介绍jvm</strong></p><p>为java语句提供了运行的场地，实现一次编译，到处运行</p><ol><li>运行时数据区</li><li>类加载器（启动类、扩展类、应用类）</li><li>执行引擎（垃圾回收器、编译器、解释器）</li></ol><p><strong>Tomcat打破双亲委派</strong></p><p>定义了许多类加载器，其中webapp类加载器重写了load方法，规定加载器优先加载自己的类，而不是向上委派</p><p><strong>java线程和操作系统线程的区别</strong></p><ol><li>java线程和操作系统在jdk21前都是一一对应的关系，对一个java线程和操作系统线程的联系会通过jvm调用内核函数的方式实现</li><li>java线程更轻量，本质只是os线程的映射</li><li>java线程收到jvm的统一调配，os线程不会受到jvm的影响</li></ol><p><strong>聚簇索引和非聚簇索引</strong></p><p>用字典举例的话，聚簇索引就是将信息直接写在目录的索引，在目录里找到这个字就可以知道这个字的信息了，一般对应主键索引或唯一索引。非聚簇索引在拿到这个字的页号后，就需要翻开字典再找一次才能拿到信息。</p><p><strong>进程线程协程</strong></p><p>你需要烧水+切菜</p><p>进程就是你先烧水，再去切菜</p><p>线程就是你烧水，雇另一个人去切菜</p><p>协程就是你在烧水的间隙把菜切了</p><p>协程就是线程执行的不同任务，协程之间可以相互切换，切换时会保留现场等待下次被执行</p><p><strong>分布式事务及其解决方案</strong></p><p>分布式事务是原本一条业务被拆分，需要与多个数据库进行交互，需要开启事务保证这些数据库的一致性</p><ol><li>2pc：协调者在提交前询问各个执行者，得到所有执行者的确认答复后才提交事务，这期间由于事务开始了，数据一直阻塞</li><li>3pc：和2pc差不多，多了一个提前询问，提前询问参与者，确保其可用性，后续流程与2pc一致</li><li>ttc：核心思想也是询问，然后确认，但ttc是业务层的冻结，本质不会影响数据库，不会加物理锁</li><li>saga：直接做，做不了全都回滚</li></ol>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>模面5</title>
+      <link href="/2026/03/11/2026.3.11/"/>
+      <url>/2026/03/11/2026.3.11/</url>
+      
+        <content type="html"><![CDATA[<p><strong>接口测试用例包含的内容/怎么设计接口测试用例</strong></p><p>名称、预制条件（前提条件）、请求方法、请求头、请求体、预期结果</p><p>设计思路：</p><p>针对数据：1.正确值 2.边界值、空值、特殊符号</p><p>针对参数：1.全参、必选参数、可选参数 2.多参、少参、无参、错参</p><p><strong>性能测试的测试策略</strong></p><p><strong>基准测试：</strong> 在单用户下运行，确定系统的基本响应时间指标。</p><p><strong>负载测试（Load）：</strong> 逐步增加压力，找到系统满足 SLA（服务等级协议）的最大并发量。</p><p><strong>压力测试（Stress）：</strong> 持续加压直到系统崩溃，观察系统的极限承载能力和失效模式。</p><p><strong>稳定性测试（Soak）：</strong> 在高负载下长时间运行（如 7x24h），检查是否有内存泄漏或资源耗尽。</p><p><strong>SQL 慢的优化策略</strong></p><ol><li>打开EXPLAIN分析语句执行情况，重点关注type、rows、extra字段，看看有没有用索引</li><li>创建联合索引时注意最左匹配原则</li><li>调整sql语句结构，利用join替换子查询</li><li>如果数据量太大，可以考虑分库分表或创建缓存</li></ol><p><strong>接口自动化怎么做？</strong></p><p>先讲手动的接口测试，根据测试用例一个个在postman等工具中调试</p><p>我们利用代码减少重复的操作就是自动化。</p><p>代码的编写主要包括 逻辑部分和数据部分，逻辑部分就是1.发起请求 2.验证返回结果；数据部分包括用例集，请求的参数等</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>模面4</title>
+      <link href="/2026/03/10/2026.3.10/"/>
+      <url>/2026/03/10/2026.3.10/</url>
+      
+        <content type="html"><![CDATA[<p><strong>Redis 为什么使用跳表而不是 B+ 树？</strong></p><ol><li>B+树很耗费空间，而内存的空间是很宝贵的，相比之下跳表这种可控参数更合适</li><li>B+树的范围查询，通过跳表也可以实现</li><li>B+树在并发编程下的锁粒度更大</li><li>B+树比跳表更难维护和利用</li></ol><p><strong>Java 的类加载机制</strong></p><ol><li><strong>加载 (Loading)：</strong> 通过全限定名获取二进制字节流，在内存中生成 <code>java.lang.Class</code> 对象。</li><li><strong>链接 (Linking)：</strong><ul><li><strong>验证：</strong> 确保字节码符合 JVM 规范，没有安全风险。</li><li><strong>准备：</strong> 为<strong>静态变量</strong>分配内存并设置<strong>初始默认值</strong>（如 <code>int</code> 为 <code>0</code>）。注意：此时还没执行赋值动作。</li><li><strong>解析：</strong> 将符号引用替换为直接引用（内存地址）。</li></ul></li><li><strong>初始化 (Initialization)：</strong> 执行类构造器 <code>&lt;clinit&gt;()</code> 方法的过程，真正执行静态变量赋值和 <code>static</code> 代码块。</li><li><strong>使用 (Using)：</strong> 程序执行业务逻辑。</li><li><strong>卸载 (Unloading)：</strong> 类从方法区移除（条件非常苛刻）。</li></ol><p><strong>类什么时候会被卸载</strong></p><ol><li>无任何实例对象：该类及其子类在堆中没有任何实例对象</li><li>类加载器回收：根据双亲委派模型，由于系统类加载器几乎不会被回收，只要是自己创建的类，几乎都不会被卸载</li><li>该类的 <code>java.lang.Class</code> 对象没有在任何地方被引用</li></ol><p><strong>布隆过滤器的原理是什么？以及主要解决什么问题？</strong></p><p>主要解决缓存穿透问题（大量请求访问不存在的数据，大量请求打崩数据库）</p><p>核心是一个位数组和hash函数</p><p>具体来说，插入一个key时，通过k个hash函数计算出k个不同hash值，然后位数组在k个hash值处置1，每次请求前先根据key和这个key对应的hash值是否置1，就可以判断这个值是否存在</p><p><strong>Redis 集群模式下，一致性 Hash 是怎么做的？</strong></p><p>利用CRC16循环冗余码对key计算一个16位的整数，然后用16384（槽位数）取模，最后结果就是slot计算得到的hash槽</p><p>优点：槽位数固定，增删节点的时候无需改变其他key的位置</p><p><strong>缓存三剑客</strong></p><p>缓存穿透：非法请求攻击数据库。布隆过滤器，缓存空对象（非法请求第一次访问数据库时，向缓存中添加一条空数据），拒绝非法请求</p><p>缓存雪崩：大量key同时过期。设置不同的过期时间，设计架构（熔断控制，限流控制，多级缓存）</p><p>缓存击穿：key过期时被大量访问。互斥锁，逻辑过期（不设置过期时间，value中添加一个逻辑过期时间，如果过期了就异步更新一次数据），热数据不过期</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>模面3</title>
+      <link href="/2026/03/08/2026.3.8/"/>
+      <url>/2026/03/08/2026.3.8/</url>
+      
+        <content type="html"><![CDATA[<p><strong>索引的失效情况</strong></p><p>sql层面：使用模糊查询、函数、计算、隐式转换、负向查询</p><p>系统层面：条件查询大于30%数据量，可能会优化为全表扫描</p><p><strong>redis的应用常见</strong></p><p>缓存：存ak、存业务数据</p><p>限流：滑动窗口（zset）、令牌桶（string）</p><p>消息队列（已优化）、分布式锁（Redisson）</p><p><strong>redis的内存淘汰和过期策略</strong></p><p>过期策略：对于设置了过期时间的key进行的过期淘汰策略</p><ol><li>惰性删除：key每次被访问都要先查看剩余时间，过期才删除</li><li>定时删除：按照频率依次检测剩余key的过期时间，淘汰过期key</li></ol><p>内存淘汰：当内存不足时针对剩余key采取的策略</p><pre><code>1. 不淘汰任何key，拒绝本次插入2. 局部淘汰（针对设置了过期时间的key）： 1. lru：淘汰使用次数最少的key 2. ttl：淘汰剩余过期时间最短的key 3. random：随机淘汰3. 全局淘汰（针对所有key）： 1. lru：淘汰使用次数最少的key 2. random：随机淘汰</code></pre><p><strong>jvm了解哪些参数，怎么设置？</strong></p><p>分为标准参数、非标准参数、稳定参数。</p><p>一、内存配置</p><ol><li>堆内存核心参数（-X 开头）</li></ol><table><thead><tr><th>参数</th><th>含义</th><th>推荐设置</th><th>说明</th></tr></thead><tbody><tr><td><code>-Xms</code></td><td>堆初始内存（Min Heap）</td><td>等于 <code>-Xmx</code></td><td>避免 JVM 运行中动态扩容堆，减少性能波动。</td></tr><tr><td><code>-Xmx</code></td><td>堆最大内存（Max Heap）</td><td>服务器：物理内存的 1/4 ~ 1/2示例：<code>-Xmx4g</code></td><td>比如 16G 内存服务器，设 <code>-Xmx8g</code>；太小会频繁 GC，太大导致 Full GC 耗时久。</td></tr><tr><td><code>-Xmn</code></td><td>新生代内存（Eden + S0 + S1）</td><td>堆内存的 1/3 ~ 1/2示例：<code>-Xmn2g</code></td><td>新生代越大，Minor GC 频率越低；太小则 Minor GC 频繁。（G1 收集器不推荐设 <code>-Xmn</code>，由 G1 自动调节）</td></tr><tr><td><code>-XX:NewRatio</code></td><td>新生代 / 老年代比例</td><td>比如 <code>-XX:NewRatio=2</code>（老年代：新生代 = 2:1）</td><td>替代 <code>-Xmn</code> 的写法，二选一即可。</td></tr><tr><td><code>-XX:SurvivorRatio</code></td><td>Eden/Survivor 区比例</td><td><code>-XX:SurvivorRatio=8</code>（默认）</td><td>Eden:S0:S1 = 8:1:1； Survivor 区太小会导致对象提前进入老年代。</td></tr></tbody></table><ol start="2"><li>非堆内存参数（-XX 开头）</li></ol><table><thead><tr><th>参数</th><th>含义</th><th>推荐设置</th><th>说明</th></tr></thead><tbody><tr><td><code>-XX:MetaspaceSize</code></td><td>元空间初始内存</td><td><code>-XX:MetaspaceSize=256m</code></td><td>替代 JDK 7 之前的 <code>-XX:PermSize</code>（永久代），存储类信息、常量池。</td></tr><tr><td><code>-XX:MaxMetaspaceSize</code></td><td>元空间最大内存</td><td><code>-XX:MaxMetaspaceSize=512m</code></td><td>避免元空间溢出（<code>OutOfMemoryError: Metaspace</code>），默认无上限（会占满物理内存）。</td></tr><tr><td><code>-XX:MaxDirectMemorySize</code></td><td>直接内存上限</td><td><code>-XX:MaxDirectMemorySize=1g</code></td><td>NIO 用的直接内存，超出会触发 Full GC；默认等于 <code>-Xmx</code>。</td></tr></tbody></table><p>二、GC垃圾回收器配置</p><ol><li>选择 GC 收集器（-XX 开头）</li></ol><table><thead><tr><th>GC 类型</th><th>参数</th><th>适用场景</th><th>调优点</th></tr></thead><tbody><tr><td>G1（默认，JDK 9+）</td><td><code>-XX:+UseG1GC</code></td><td>中大型堆（4G 以上）、追求低停顿</td><td>优先保证最大停顿时间，适合微服务、电商核心系统。</td></tr><tr><td>Parallel（JDK 8 默认）</td><td><code>-XX:+UseParallelGC</code></td><td>后台任务、批处理（追求高吞吐量）</td><td>吞吐量优先，停顿时间可能较长。</td></tr><tr><td>CMS（已废弃）</td><td><code>-XX:+UseConcMarkSweepGC</code></td><td>低延迟场景（JDK 8 仍可用）</td><td>并发回收，停顿短，但内存碎片多。</td></tr><tr><td>ZGC（JDK 11+）</td><td><code>-XX:+UseZGC</code></td><td>超大堆（16G+）、超低延迟</td><td>停顿毫秒级，适合金融、实时计算。</td></tr></tbody></table><ol start="2"><li>GC 调优关键参数（以 G1 为例）</li></ol><table><thead><tr><th>参数</th><th>含义</th><th>推荐设置</th><th></th></tr></thead><tbody><tr><td><code>-XX:MaxGCPauseMillis</code></td><td>G1 目标最大停顿时间</td><td><code>-XX:MaxGCPauseMillis=200</code>（200ms）</td><td>不是绝对保证，G1 会尽量满足；设太小会导致 GC 频繁。</td></tr><tr><td><code>-XX:InitiatingHeapOccupancyPercent</code>（IHOP）</td><td>G1 触发混合回收的堆占用阈值</td><td><code>-XX:IHOP=45</code>（默认 45%）</td><td>堆占用达到 45% 时，G1 开始混合回收老年代；太高会导致 Full GC。</td></tr><tr><td><code>-XX:+PrintGCDetails</code></td><td>打印 GC 详细日志</td><td>调试必开</td><td>结合 <code>-Xloggc</code> 输出到文件。</td></tr><tr><td><code>-Xloggc:/logs/gc-%t.log</code></td><td>GC 日志输出路径（% t 带时间戳）</td><td>生产环境必开</td><td>方便排查 GC 问题，示例：<code>-Xloggc:/logs/app-gc-20260308.log</code></td></tr><tr><td><code>-XX:+HeapDumpOnOutOfMemoryError</code></td><td>OOM 时自动导出堆快照</td><td>生产环境必开</td><td>排查内存泄漏的核心手段。</td></tr><tr><td><code>-XX:HeapDumpPath=/dump/heap-dump.hprof</code></td><td>堆快照存储路径</td><td>配合上一个参数使用</td><td>示例：<code>-XX:HeapDumpPath=/dump/app-oom.hprof</code></td></tr></tbody></table><p><strong>linux命令</strong></p><ol><li>文件操作：ls列出文件、cd切换、mkdir创建、rm删除、cp复制</li><li>查看操作：cat查看文件内容、tail -f查看实时日志、less分页查看</li><li>查找操作：find找文件、grep找内容行</li><li>进程：ps -ef | grep java查看java进程、top查看cpu/内存、kill杀死进程、netstat查端口占用</li><li>压缩解压：tar（tape archive）打包解包、zip压缩解压</li><li>网络：ping连通性测试、ipconfig看ip、curl访问接口</li></ol>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>模面2</title>
+      <link href="/2026/03/04/2026.3.4/"/>
+      <url>/2026/03/04/2026.3.4/</url>
+      
+        <content type="html"><![CDATA[<p><strong>接口和抽象类的区别</strong></p><p>接口是对行为的抽象，抽象类是对本质的抽象。一个类具有多种功能，可以实现多个方法，但它只能是“它”，只能继承一个类。使用习惯上，我们一般利用类实现代码的复用，利用接口实现代码的规范与解耦。</p><p><strong>接口中的default 和 static方法有什么区别</strong></p><p>default方法表示这是它的默认实现，如果你不重写这个方法，被调用时就按照默认的走；static表示这个方法归接口所有，你不需要实现。</p><p><strong>final关键字的作用</strong></p><p>final关键字可以修饰类（但不能修饰抽象类）、方法、变量。</p><p>如果修饰类，表示这个类无法继承。如果修饰方法，表示这个方法无法重写。修饰变量，表示这是一个常量。</p><blockquote><p>不能修饰抽象类：抽象类是为了被继承，但是final会阻止他被继承</p></blockquote><p><strong>如何创建一个不可变对象</strong></p><p>类声明为 <code>final</code>（不可继承）；</p><p>所有成员变量声明为 <code>private final</code>；</p><p>不提供修改变量的 <code>setter</code> 方法；</p><p>通过构造器初始化时，如果是引用类型，要进行<strong>深拷贝（Deep Copy）</strong>，防止外部修改原对象。</p><p><strong>线程池对比直接new一个线程的优点</strong></p><ol><li>能复用线程，降低初始化线程的性能开销，提高线程的响应速度</li><li>能应对突发流量，如果1000个请求交给系统处理，线程池可以设置最大线程数量进行限流</li></ol><p><strong>threadlocal可能出现的问题</strong></p><p>内存泄漏。threadlocal的底层基于hashmap，其key是threadlocal本身，是一个弱引用对象，其值为强引用对象，其生命周期就是线程的生命周期。但是如果我们使用的是线程池，线程不会被彻底销毁，当 <code>ThreadLocal</code> 实例被 GC 回收后，<code>ThreadLocalMap</code> 中会出现 Key 为 <code>null</code> 的 Entry。由于 <code>Value</code> 与当前 <code>Thread</code> 之间存在强引用链路，只要线程不销毁（如在线程池中），这部分 Value 就永远无法被回收，导致内存泄漏。</p><p><strong>拒绝策略</strong></p><ol><li>直接抛出异常</li><li>调用主线程执行该任务</li><li>直接丢弃</li><li>丢弃最旧任务</li></ol><p><strong>spring创建bean的方式</strong></p><ol><li>@component注解扫描</li><li>基于配置类的@confuguration和@bean</li><li>基于配置类的@import</li></ol><p><strong>aop的常用注解和其实现机制，什么情况会失效</strong></p><table><thead><tr><th><strong>注解</strong></th><th><strong>作用</strong></th><th><strong>执行时机</strong></th></tr></thead><tbody><tr><td><strong><code>@Aspect</code></strong></td><td><strong>声明切面</strong></td><td>标注在类上，表示这是一个切面类。</td></tr><tr><td><strong><code>@Pointcut</code></strong></td><td><strong>定义切入点</strong></td><td>规定哪些方法需要被拦截（如：<code>execution(* com.xxx.service.*.*(..))</code>）。</td></tr><tr><td><strong><code>@Before</code></strong></td><td><strong>前置通知</strong></td><td>在目标方法执行<strong>之前</strong>运行。</td></tr><tr><td><strong><code>@After</code></strong></td><td><strong>后置通知</strong></td><td>在目标方法执行<strong>之后</strong>运行（无论成功还是抛出异常）。</td></tr><tr><td><strong><code>@AfterReturning</code></strong></td><td><strong>返回通知</strong></td><td>在目标方法<strong>正常执行完毕</strong>后运行。</td></tr><tr><td><strong><code>@AfterThrowing</code></strong></td><td><strong>异常通知</strong></td><td>在目标方法<strong>抛出异常</strong>后运行。</td></tr><tr><td><strong><code>@Around</code></strong></td><td><strong>环绕通知</strong></td><td><strong>最强大</strong>。手动控制目标方法的执行（<code>joinPoint.proceed()</code>），可修改输入输出。</td></tr></tbody></table><p>实现机制：当你为一个bean配置了切面，spring不会直接返回原对象，而是返回代理对象</p><ol><li>jdk代理： 通过 <code>java.lang.reflect.Proxy</code> 动态创建一个实现类。</li><li>cglib代理：通过字节码增强技术，动态创建一个目标类的<strong>子类</strong>并重写方法。</li></ol><p>失效情况：</p><ol><li>自调用现象：方法A调用方法B，且只有B有AOP注解，这个时候类内部还没有创建动态对象，就会失效。</li><li>方法修饰符不是 <code>public</code></li><li><code>final</code> 方法或 <code>static</code> 方法</li><li>内部类或非 Spring Bean</li></ol><p><strong>redis的基本数据结构</strong></p><ol><li><p>String：基于SDS（简单动态字符串）实现。用于单值存储、计数器、分布式锁。</p></li><li><p>List：基于quicklist（将多个ziplist）像链表一样连接。推送最新内容、简单消息队列（头进尾出）</p></li><li><p>Hash：基于ziplist（使用连续内存块）或hashtable（不连续，通过hash函数映射）。存储结构化数据</p></li><li><p>Set：基于intset（整数集合）或hashtable实现。对比Hash结构，核心功能就是去重。</p></li><li><p>ZSet：基于skiplist+hashtable或ziplist。用于排行榜、范围查询等</p></li></ol><blockquote><p>skiplist:<a href="https://zhuanlan.zhihu.com/p/1893308433140257107">(22 封私信) SkipList跳表：高效查找的利器 - 知乎</a></p></blockquote><p><strong>zset数据量太大，可能导致什么问题？如何优化</strong></p><p>问题：内存占用、读写效率、运营备份、集群失效</p><p>优化思路：限制大小、设置过期时间（value无法设置过期时间，需手动删除）、切分大set</p><p><strong>redis为什么快</strong></p><p>基于内存、IO多路复用（避免了单线程的IO阻塞这一致命问题）</p><p>具体来说，IO多路复用就是设置一个selector不断轮询socket，等某个socket就绪后才通知线程处理该请求，没有通知时该线程会空闲</p><p><strong>mysql为什么选择b+树</strong></p><blockquote><p>其实是问b+树的优势</p></blockquote><p>b+树的非叶子节点只存储索引，叶子节点存储数据的结构，而且一个非叶子节点可以有多个子树。这使得其与其他树相比，树高更低，增删改查的效率都会更高。</p><p>b+树的叶子节点按顺序排列，使其天然支持范围查找，对应了sql中频繁的范围查找。</p><p><strong>深分页的优化思路</strong></p><p>深分页为什么慢？以下面一条语句来举例</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">-- 需求：查询第 <span class="number">100001</span>-<span class="number">100010</span> 条订单（按创建时间排序）</span><br><span class="line">SELECT id, order_no, create_time </span><br><span class="line">FROM orders </span><br><span class="line"><span class="type">WHERE</span> <span class="variable">status</span> <span class="operator">=</span> <span class="number">1</span> </span><br><span class="line">ORDER BY create_time DESC </span><br><span class="line">LIMIT <span class="number">100000</span>, <span class="number">10</span>;</span><br></pre></td></tr></table></figure><p>mysql会先查询100010条数据，然后舍弃前100000条。所有我们优化的核心思路就是让他查快点。从查询速度的角度思考，我们可以添加索引；从查询量的角度思考，我们可以提前计算主键值。索引的细节就是最好创建联合索引，这样索引的性价比比较高；提前计算就是先算好某一页对应的主键值，比如第二页是100000到110000这样。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>模面</title>
+      <link href="/2026/02/24/2026.2.24/"/>
+      <url>/2026/02/24/2026.2.24/</url>
+      
+        <content type="html"><![CDATA[<p><strong>AQS队列</strong></p><ol><li>state关键字是类的volatile全局变量，0为无锁，1为占有，&gt;1为重入次数。</li><li>“非公平锁”的实现并不依赖唤醒所有节点，永远只唤醒下一个节点。它的原理是新线程加入时不需要判断AQS队列情况，可以直接参与锁的竞争。</li></ol><p><strong>MySQL的索引</strong></p><ol><li>Hash表与B+树对比：Hash表的单点查询效率更高，但是面对频繁的范围查找时B+树的性能更突出，因为B+树天生支持范围查找，而Hash却只能全表扫描。</li></ol><p><strong>看门狗</strong></p><ol><li>锁未指定过期时间时（但是Rediison有一个默认过期时间），Redisson在后台开启一个定时任务，每隔一段时间向Redis发送一个Lua脚本为锁续期。</li><li>当线程宕机时这个定时任务不复存在，锁就会超时过期。</li></ol>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> dialog </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>算法</title>
+      <link href="/2026/02/14/2026.2.14/"/>
+      <url>/2026/02/14/2026.2.14/</url>
       
         <content type="html"><![CDATA[<h3 id="LeetCode-138-随机数组的复制">LeetCode 138 随机数组的复制</h3><p>给你一个长度为 n 的链表，每个节点包含一个额外增加的随机指针 random ，该指针可以指向链表中的任何节点或空节点。</p><p>构造这个链表的 深拷贝。 深拷贝应该正好由 n 个 全新 节点组成，其中每个新节点的值都设为其对应的原节点的值。新节点的 next 指针和 random 指针也都应指向复制链表中的新节点，并使原链表和复制链表中的这些指针能够表示相同的链表状态。复制链表中的指针都不应指向原链表中的节点 。</p><p>例如，如果原链表中有 X 和 Y 两个节点，其中 X.random --&gt; Y 。那么在复制链表中对应的两个节点 x 和 y ，同样有 x.random --&gt; y 。</p><p>返回复制链表的头节点。</p><p>用一个由 n 个节点组成的链表来表示输入/输出中的链表。每个节点用一个 [val, random_index] 表示：</p><p>val：一个表示 Node.val 的整数。<br>random_index：随机指针指向的节点索引（范围从 0 到 n-1）；如果不指向任何节点，则为  null 。<br>你的代码 只 接受原链表的头节点 head 作为传入参数。</p><p>提示：</p><p>0 &lt;= n &lt;= 1000<br>-104 &lt;= Node.val &lt;= 104<br>Node.random 为 null 或指向链表中的节点。</p><h3 id="难点">难点</h3><p>根据常规思路，设a为当前节点，一边遍历数组一边复制，如果此时a.random还没有复制，就会导致复制的数组指向原队列。</p><p>考虑使用hash表先将rondom节点存起来，例如 node(1).rondom = (2)，记为 (node(1)，node(2))，时间和空间为O(n)，O(n)</p><p>如何优化呢？</p><p>不使用hash表存储，我们令先在原队列复制链表，如 1 -&gt; 1’ -&gt; 2 -&gt; 2’ -&gt; 3 -&gt; 3’。这时我们可以通过原节点找到复制节点，而且可以保证遍历过程中不会出现未初始化的情况，需要注意，我们在混合这些节点后，最后需要将复制队列从原队列中剥离，具体代码如下。</p><h3 id="代码">代码</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Solution</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> Node <span class="title function_">copyRandomList</span><span class="params">(Node head)</span> &#123;</span><br><span class="line">        <span class="comment">// 在原数组复制节点为1 -&gt; 1&#x27; -&gt; 2 -&gt; 2&#x27; -&gt; 3 -&gt; 3&#x27;</span></span><br><span class="line">        <span class="type">Node</span> <span class="variable">a</span> <span class="operator">=</span> head;</span><br><span class="line">        <span class="keyword">while</span>(a != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">nxt</span> <span class="operator">=</span> a.next;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">node</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Node</span>(a.val);</span><br><span class="line">            a.next = node;</span><br><span class="line">            node.next = nxt;</span><br><span class="line">            a = nxt;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 更新复制节点的随机指向</span></span><br><span class="line">        a = head;</span><br><span class="line">        <span class="keyword">while</span>(a != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">b</span> <span class="operator">=</span> a.next;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">nxt</span> <span class="operator">=</span> a.next.next;</span><br><span class="line">            b.random = a.random != <span class="literal">null</span> ? a.random.next : <span class="literal">null</span>;</span><br><span class="line">            a = nxt;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 剥离复制队列</span></span><br><span class="line">        a = head;</span><br><span class="line">        <span class="type">Node</span> <span class="variable">dummy</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Node</span>(<span class="number">0</span>);</span><br><span class="line">        <span class="type">Node</span> <span class="variable">cur</span> <span class="operator">=</span> dummy;</span><br><span class="line">        <span class="keyword">while</span>(a != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">b</span> <span class="operator">=</span> a.next;</span><br><span class="line">            <span class="type">Node</span> <span class="variable">nxt</span> <span class="operator">=</span> a.next.next;</span><br><span class="line">            cur.next = b;</span><br><span class="line">            cur = b;</span><br><span class="line">            a.next = nxt;</span><br><span class="line">            a = nxt;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> dummy.next;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
       
@@ -24,8 +214,8 @@
     
     <entry>
       <title>消息队列小专题</title>
-      <link href="/2026/02/11/2025.2.11/"/>
-      <url>/2026/02/11/2025.2.11/</url>
+      <link href="/2026/02/11/2026.2.11/"/>
+      <url>/2026/02/11/2026.2.11/</url>
       
         <content type="html"><![CDATA[<p>今天详细学习了一下消息队列的幂等性与重复消费问题，其实是在AI的模拟面试的时候被狠狠diss了 😥 😥</p><p>我在实习的时候，这一条链路的业务大致是这样的，我们拿到模型实例返回的计费数据和日志数据，我们要把他们持久化进Mongo中，持久化操作肯定还是异步比较舒服，而且我们肯定不能在本地直接开启那么多线程直接去异步调用Mongo，这样性能会被浪费，我实习的项目选择的是kafka进行业务解耦，通过consumer去调用Mongo，我们本地只需要发消息就行了。</p><p>那么使用消息队列就必须面对几个经典问题，如何保证消息不丢失，如何解决幂等性问题，怎样监控消息堆积量（吓哭了  😰 😰</p><p>我们先简单了解一下消息队列的组成和原理（以kafka为例）：</p><p>要理解 Kafka，必须先掌握这几个核心概念：</p><ol><li><strong>Producer (生产者)：</strong> 往记事本上写数据的人（比如你的 MaaS 计费服务）。</li><li><strong>Consumer (消费者)：</strong> 从记事本上读数据的人（比如你的 MongoDB 写入服务）。</li><li><strong>Broker (代理/服务器)：</strong> 存放记事本的服务器节点。</li><li><strong>Topic (主题)：</strong> 记事本的分类（比如“订单日志”、“用户日志”）。</li><li><strong>Partition (分区) —— *<em>核心机制*</em></strong>：<ul><li>为了存更多数据，Kafka 把一个 Topic 切分成多个 Partitions（分区）。</li><li>每个 Partition 是一个<strong>有序的</strong>队列，分布在不同的 Broker 上。</li><li><strong>这是 Kafka 高并发的秘诀：</strong> 以前只能在一个本子上写，现在撕成 10 份，10 个人可以同时写！</li></ul></li></ol><p>其实我感觉消息队列都差不多，就是A如果想给C发消息，那A必须先把信给B，这个B跟邮局的作用差不多，把信件根据Topic归类整理，存档后分给订阅了这些消息的C，也就是收信人。</p><p>我们来了解一下具体的细节：</p><ol><li>追加写：producer发送消息到broker，broker不是有分区吗，broker按照一定的规则将消息放到合适的partition，这个partition是一个物理概念，是一个磁盘的划分，新消息会追加写在旧消息的后面。</li><li>offset：消息分区后还需要划分为多个segment，每个消息都有对应的offset，通过offset我们可以直接定位到这个消息的物理位置，直接获取该消息的内容</li><li>零拷贝：消息的读取直接使用系统缓存，不经过JVM虚拟机</li></ol><p>简单了解消息队列后，我们来回答一下上面的发问：</p><p><strong>怎么保证消息不丢失？</strong></p><ul><li>生产者：确保消息发出去。消息可能发出去但是broker没收到怎么办，我们可以通过消息回调，即broker收到消息后回发一个ack确认信息，生产者在确认ack后才能移动offset，否则超时重发</li><li>broker：确保消息存下来。Broker 收到消息了，但还没来得及落盘（写入硬盘）就宕机了，或者内存满了。我们可以通过各消息队列的持久化机制解决这个问题</li><li>消费者：确保消息被处理。消息可能发出去但是消费者没收到，或者处理业务异常了怎么办，我们同样通过消息回调解决这个问题。</li></ul><p><strong>怎么保证不重复消费？</strong></p><p>​我们可以设置针对MessageID的去重表来解决这个问题，结合我实习的业务流程，他大致是这样的</p><p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260211214729851.png" alt="image-20260211214729851"></p><p>这里要注意的是：如果去重和业务处理是分开的，我们需要注意他们两的原子性。打个比方：</p><p><strong>你的方案：</strong> “Consumer消费前，先插入 MessageID 到去重表。插入成功 -&gt; 消费；插入失败 -&gt; 跳过。”</p><p><strong>场景推演（Bug 复现）：</strong></p><ol><li>Consumer 收到消息 A。</li><li><strong>插入 MySQL 去重表成功</strong>（MessageID: A 已存在）。</li><li><strong>【宕机时刻】</strong>：就在这一瞬间，Consumer 进程挂了，或者写入 MongoDB 超时了，或者业务逻辑报错了。<strong>总之，业务没跑完。</strong></li><li>因为没有 ACK，Kafka 进行超时重发，再次投递消息 A。</li><li>Consumer 重启，再次收到消息 A。</li><li><strong>尝试插入 MySQL 去重表 -&gt; 失败</strong>（因为第2步已经插进去了）。</li><li>你的逻辑判断：“插入失败 = 已经消费过”。于是你 <strong>ACK 并丢弃了这条消息</strong>。</li></ol><p><strong>结果：</strong> 数据库（MongoDB）里没有这条记录，但你的去重表说有。<strong>这条用户的计费记录永远丢失了。</strong></p><p><strong>怎么检查消息积压？</strong></p><p>首先明确不应该检查内存使用情况，因为消息是持久化在硬盘中的。必须回答 <strong>Consumer Lag（消费积压量）</strong>。即 <code>LogEndOffset</code> (生产者写到了哪) 减去 <code>CurrentOffset</code> (消费者读到了哪)。</p><p>tk u ❤</p>]]></content>
       
