@@ -1,0 +1,322 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>2026.3.31 | m1kasaz</title><meta name="author" content="m1kasaz"><meta name="copyright" content="m1kasaz"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="如何基于etcd构建CDC链路   为什么要使用etcd？安全性，etcd的主从切换是秒级的，崩溃恢复非常快，etcd集群模式下也有主从，从节点长期没有收到Leader的心跳，会主动竞选为主节点，如果有从节点的任期比主节点更长，主节点会退位给该从节点。watcher机制，客户端和服务端之间会维护一个http的连接，etcd维护了一个全局的revision，只要有数据的增删改，就对revision进">
+<meta property="og:type" content="article">
+<meta property="og:title" content="2026.3.31">
+<meta property="og:url" content="http://m1kasaz.github.io/2026/03/31/2026.3.31/index.html">
+<meta property="og:site_name" content="m1kasaz">
+<meta property="og:description" content="如何基于etcd构建CDC链路   为什么要使用etcd？安全性，etcd的主从切换是秒级的，崩溃恢复非常快，etcd集群模式下也有主从，从节点长期没有收到Leader的心跳，会主动竞选为主节点，如果有从节点的任期比主节点更长，主节点会退位给该从节点。watcher机制，客户端和服务端之间会维护一个http的连接，etcd维护了一个全局的revision，只要有数据的增删改，就对revision进">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png">
+<meta property="article:published_time" content="2026-03-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-30T16:00:00.000Z">
+<meta property="article:author" content="m1kasaz">
+<meta property="article:tag" content="dialog">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "2026.3.31",
+  "url": "http://m1kasaz.github.io/2026/03/31/2026.3.31/",
+  "image": "https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png",
+  "datePublished": "2026-03-30T16:00:00.000Z",
+  "dateModified": "2026-03-30T16:00:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "m1kasaz",
+      "url": "http://m1kasaz.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://m1kasaz.github.io/2026/03/31/2026.3.31/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '2026.3.31',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">35</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">17</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">m1kasaz</span></a><a class="nav-page-title" href="/"><span class="site-name">2026.3.31</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">2026.3.31</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-30T16:00:00.000Z" title="发表于 2026-03-31 00:00:00">2026-03-31</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-30T16:00:00.000Z" title="更新于 2026-03-31 00:00:00">2026-03-31</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>3分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>如何基于etcd构建CDC链路</p>
+<ol>
+<li>
+<p>为什么要使用etcd？安全性，etcd的主从切换是秒级的，崩溃恢复非常快，etcd集群模式下也有主从，从节点长期没有收到Leader的心跳，会主动竞选为主节点，如果有从节点的任期比主节点更长，主节点会退位给该从节点。watcher机制，客户端和服务端之间会维护一个http的连接，etcd维护了一个全局的revision，只要有数据的增删改，就对revision进行更新，然后etcd内部的watchstore会看看是不是客户端监听的key变更了，如果是就主动推送。etcd可以实现长连接与主动推送</p>
+</li>
+<li>
+<p>链路的设计：本地缓存-etcd-数据中台。本地缓存更新的方式有两种。其一是本地缓存执行定时任务，每隔3分钟/开机时去数据中台获取通道信息。其二是通过etcd监听数据变更，当通道配置有变化，本地的watcher会监听到变动，获取通道信息。</p>
+</li>
+<li>
+<p>存在一些问题：</p>
+<ol>
+<li>多次更新本地需要一直获取吗？不需要，如果本地在获取过程中监听到了配置变更，只会将重试标志位设置为true，等本次获取执行完毕再去判断该标志位，决定是否再次获取。</li>
+<li>etcd的性能瓶颈怎么办？可以不进行真实的数据写入吗，因为我们的目的还是获取到变更通知嘛，只要针对这个key做一些变更就行了</li>
+</ol>
+</li>
+</ol>
+<p>针对ak缓存的一些问题</p>
+<p>链路设计：本地缓存-redis-mysql。本地缓存获取不到就去redis里边查，redis查不到就去mysql里边查。本地也会有定时任务（xx-job）进行更新。</p>
+<ol>
+<li>实时性比较差：如果需要某个ak下线了，但是缓存里还有数据，这时候用这个ak来调用服务还是可行的，怎么办。</li>
+<li>多个定时任务带来的流量高峰：xxl-job</li>
+<li>缓存穿透、击穿、雪崩：
+<ol>
+<li>大量不明ak攻击数据库：缓存空数据、布隆过滤器</li>
+<li>如果高频访问的ak缓存刚好过期：逻辑过期、互斥锁（每次只能一个请求进行数据库的获取）</li>
+<li>缓存雪崩：过期时间、限流熔断</li>
+</ol>
+</li>
+</ol>
+<p>针对通道选取的一些问题</p>
+<pre><code>1. 选取的顺序是什么？长文本（先查看用户是否开启）-&gt;前缀推荐（通道组是否支持）-&gt;复用（通道组是否支持）-&gt;负载均衡（降级）
+1. 选取逻辑：先获取endpoint，获取支持的所有通道，过滤掉被禁用的正在使用的，然后根据规则选取合适的通道
+</code></pre>
+<p>给定一个数n如23121;给定一组数字a如[2 4 9]求由a中元素组成的小于n的最大数</p>
+<blockquote>
+<p>x指相同下标中目标字符串的数字</p>
+</blockquote>
+<p>我们维护一个path，针对每一个path数位，考虑从大到小选数组中的数，如果选到与x相同的数，继续递归，如果选不到，就找一个不超过x的最大数，后面数位全部都取数组中的最大数，如果全都大于x，只能返回-1表示找不到该数。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Main</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">int</span>[] nums = <span class="keyword">new</span> <span class="title class_">int</span>[]&#123;<span class="number">2</span>,<span class="number">4</span>,<span class="number">9</span>&#125;;</span><br><span class="line">        <span class="type">int</span> <span class="variable">n</span> <span class="operator">=</span> <span class="number">23121</span>;</span><br><span class="line">        System.out.println(findMax(nums,n));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="type">int</span> <span class="title function_">findMax</span><span class="params">(<span class="type">int</span>[] nums, <span class="type">int</span> n)</span> &#123;</span><br><span class="line">        Arrays.sort(nums);</span><br><span class="line">        <span class="type">String</span> <span class="variable">s</span> <span class="operator">=</span> String.valueOf(n);</span><br><span class="line">        <span class="type">int</span> <span class="variable">res</span> <span class="operator">=</span> dfs(nums, s, <span class="number">0</span>, <span class="keyword">new</span> <span class="title class_">StringBuilder</span>());</span><br><span class="line">        <span class="keyword">if</span>(res != -<span class="number">1</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> res;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">StringBuilder</span> <span class="variable">sb</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">StringBuilder</span>();</span><br><span class="line">        fillMax(sb, nums, s.length()-<span class="number">1</span>);</span><br><span class="line">        <span class="keyword">return</span> Integer.parseInt(sb.toString());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="type">int</span> <span class="title function_">dfs</span><span class="params">(<span class="type">int</span>[] nums, String s, <span class="type">int</span> index, StringBuilder path)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span>(index == s.length()) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">int</span> <span class="variable">target</span> <span class="operator">=</span> s.charAt(index) - <span class="string">&#x27;0&#x27;</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> nums.length-<span class="number">1</span>; i &gt;= <span class="number">0</span> ; i--) &#123;</span><br><span class="line">            <span class="keyword">if</span>(target == nums[i]) &#123;</span><br><span class="line">                path.append(nums[i]);</span><br><span class="line">                <span class="type">int</span> <span class="variable">res</span> <span class="operator">=</span> dfs(nums, s, index+<span class="number">1</span>, path);</span><br><span class="line">                <span class="keyword">if</span>(res != -<span class="number">1</span>) &#123;</span><br><span class="line">                    <span class="keyword">return</span> res;</span><br><span class="line">                &#125;</span><br><span class="line">                path.deleteCharAt(index);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> nums.length-<span class="number">1</span>; i &gt;= <span class="number">0</span> ; i--) &#123;</span><br><span class="line">            <span class="keyword">if</span>(target &gt; nums[i]) &#123;</span><br><span class="line">                fillMax(path,nums,s.length());</span><br><span class="line">                <span class="keyword">return</span> Integer.parseInt(path.toString());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">fillMax</span><span class="params">(StringBuilder path, <span class="type">int</span>[] nums, <span class="type">int</span> length)</span> &#123;</span><br><span class="line">        <span class="keyword">while</span> (path.length() &lt; length) &#123;</span><br><span class="line">            path.append(nums[nums.length-<span class="number">1</span>]);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io">m1kasaz</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io/2026/03/31/2026.3.31/">http://m1kasaz.github.io/2026/03/31/2026.3.31/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://m1kasaz.github.io" target="_blank">m1kasaz</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/dialog/">dialog</a></div><div class="post-share"><div class="social-share" data-image="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/30/2026.3.30/" title="2026.3.30"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">2026.3.30</div></div><div class="info-2"><div class="info-item-1">230. 二叉搜索树中第 K 小的元素 给定一个二叉搜索树的根节点 root ，和一个整数 k ，请你设计一个算法查找其中第 k 小的元素（k 从 1 开始计数）。 思路：遍历顺序肯定是中序，才能用上搜索树的性质。  全局记录答案。  123456789101112131415161718192021class Solution &#123;    private int ans;    private int k;    public int kthSmallest(TreeNode root, int k) &#123;        this.k = k;        dfs(root);        return ans;    &#125;	// 左中右遍历，在根节点k--。    private void dfs(TreeNode node) &#123;        if (node == null || k &lt;= 0) &#123;            return;        &#125;        dfs(node.left); //...</div></div></div></a><a class="pagination-related" href="/2026/04/01/2026.4.1/" title="2026.4.1"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">2026.4.1</div></div><div class="info-2"><div class="info-item-1">怎么保证Mysql的主从一致性 根据一致性有低到高，Mysql分为异步复制、半同步复制、组复制。异步复制是将binlog文件发送给从节点就不管了，半同步复制是只要有一个从节点告知主节点已经将binlog复制完毕，主节点就返回插入完成的消息，组复制就需要大多数节点都告知主节点复制完毕，主节点才会返回。 如何使用redis实现分布式锁 1SET lock_key unique_value NX PX 30000  lock_key：锁的名字。 unique_value：关键点！ 每个客户端生成的随机唯一 ID（如 UUID）。用于释放锁时校验“这把锁是不是我加的”。 NX：只有 key 不存在时才设置成功（保证互斥）。 PX 30000：设置 30...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/02/10/2026.2.10/" title="CI&#x2F;CD"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E5%9B%9B%E8%B0%8E.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-02-10</div><div class="info-item-2">CI&#x2F;CD</div></div><div class="info-2"><div class="info-item-1">主播最近也是get到一个新的爱好就是健身，可能最近会专门开一篇健身专题吧hahahh 😚 😚 博客荒废了好久，主要是主播实习结束完后给自己放了一个月的假，最近要收收心自律起来了...</div></div></div></a><a class="pagination-related" href="/2026/02/11/2026.2.11/" title="消息队列小专题"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/icon.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-02-11</div><div class="info-item-2">消息队列小专题</div></div><div class="info-2"><div class="info-item-1">今天详细学习了一下消息队列的幂等性与重复消费问题，其实是在AI的模拟面试的时候被狠狠diss了 😥 😥 我在实习的时候，这一条链路的业务大致是这样的，我们拿到模型实例返回的计费数据和日志数据，我们要把他们持久化进Mongo中，持久化操作肯定还是异步比较舒服，而且我们肯定不能在本地直接开启那么多线程直接去异步调用Mongo，这样性能会被浪费，我实习的项目选择的是kafka进行业务解耦，通过consumer去调用Mongo，我们本地只需要发消息就行了。 那么使用消息队列就必须面对几个经典问题，如何保证消息不丢失，如何解决幂等性问题，怎样监控消息堆积量（吓哭了  😰 😰 我们先简单了解一下消息队列的组成和原理（以kafka为例）： 要理解 Kafka，必须先掌握这几个核心概念：  Producer (生产者)： 往记事本上写数据的人（比如你的 MaaS 计费服务）。 Consumer (消费者)： 从记事本上读数据的人（比如你的 MongoDB 写入服务）。 Broker (代理/服务器)： 存放记事本的服务器节点。 Topic (主题)：...</div></div></div></a><a class="pagination-related" href="/2026/02/24/2026.2.24/" title="2026.2.24"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/icon.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-02-24</div><div class="info-item-2">2026.2.24</div></div><div class="info-2"><div class="info-item-1">AQS队列  state关键字是类的volatile全局变量，0为无锁，1为占有，&gt;1为重入次数。 “非公平锁”的实现并不依赖唤醒所有节点，永远只唤醒下一个节点。它的原理是新线程加入时不需要判断AQS队列情况，可以直接参与锁的竞争。  MySQL的索引  Hash表与B+树对比：Hash表的单点查询效率更高，但是面对频繁的范围查找时B+树的性能更突出，因为B+树天生支持范围查找，而Hash却只能全表扫描。  看门狗  锁未指定过期时间时（但是Rediison有一个默认过期时间），Redisson在后台开启一个定时任务，每隔一段时间向Redis发送一个Lua脚本为锁续期。 当线程宕机时这个定时任务不复存在，锁就会超时过期。  </div></div></div></a><a class="pagination-related" href="/2026/03/11/2026.3.11/" title="2026.3.11"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E5%9B%9B%E8%B0%8E.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-11</div><div class="info-item-2">2026.3.11</div></div><div class="info-2"><div class="info-item-1">接口测试用例包含的内容/怎么设计接口测试用例 名称、预制条件（前提条件）、请求方法、请求头、请求体、预期结果 设计思路： 针对数据：1.正确值 2.边界值、空值、特殊符号 针对参数：1.全参、必选参数、可选参数 2.多参、少参、无参、错参 性能测试的测试策略 基准测试： 在单用户下运行，确定系统的基本响应时间指标。 负载测试（Load）： 逐步增加压力，找到系统满足 SLA（服务等级协议）的最大并发量。 压力测试（Stress）： 持续加压直到系统崩溃，观察系统的极限承载能力和失效模式。 稳定性测试（Soak）： 在高负载下长时间运行（如 7x24h），检查是否有内存泄漏或资源耗尽。 SQL 慢的优化策略  打开EXPLAIN分析语句执行情况，重点关注type、rows、extra字段，看看有没有用索引 创建联合索引时注意最左匹配原则 调整sql语句结构，利用join替换子查询 如果数据量太大，可以考虑分库分表或创建缓存  接口自动化怎么做？ 先讲手动的接口测试，根据测试用例一个个在postman等工具中调试 我们利用代码减少重复的操作就是自动化。 代码的编写主要包括...</div></div></div></a><a class="pagination-related" href="/2026/03/10/2026.3.10/" title="2026.3.10"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E5%9B%9B%E8%B0%8E.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-10</div><div class="info-item-2">2026.3.10</div></div><div class="info-2"><div class="info-item-1">Redis 为什么使用跳表而不是 B+ 树？  B+树很耗费空间，而内存的空间是很宝贵的，相比之下跳表这种可控参数更合适 B+树的范围查询，通过跳表也可以实现 B+树在并发编程下的锁粒度更大 B+树比跳表更难维护和利用  Java 的类加载机制  加载 (Loading)： 通过全限定名获取二进制字节流，在内存中生成 java.lang.Class 对象。 链接 (Linking)：  验证： 确保字节码符合 JVM 规范，没有安全风险。 准备： 为静态变量分配内存并设置初始默认值（如 int 为 0）。注意：此时还没执行赋值动作。 解析： 将符号引用替换为直接引用（内存地址）。   初始化 (Initialization)： 执行类构造器 &lt;clinit&gt;() 方法的过程，真正执行静态变量赋值和 static 代码块。 使用 (Using)： 程序执行业务逻辑。 卸载 (Unloading)：...</div></div></div></a><a class="pagination-related" href="/2026/03/18/2026.3.18/" title="2026.3.18"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/%E5%9B%9B%E8%B0%8E.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-18</div><div class="info-item-2">2026.3.18</div></div><div class="info-2"><div class="info-item-1">...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/07/19/2026.7.19/" title="MultiBot项目优化与反思">MultiBot项目优化与反思</a><time datetime="2026-07-18T16:00:00.000Z" title="发表于 2026-07-19 00:00:00">2026-07-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="LeetCode22：括号生成"/></a><div class="content"><a class="title" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成">LeetCode22：括号生成</a><time datetime="2026-07-17T16:00:00.000Z" title="发表于 2026-07-18 00:00:00">2026-07-18</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/01/2026.4.1/" title="2026.4.1"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.4.1"/></a><div class="content"><a class="title" href="/2026/04/01/2026.4.1/" title="2026.4.1">2026.4.1</a><time datetime="2026-03-31T16:00:00.000Z" title="发表于 2026-04-01 00:00:00">2026-04-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/31/2026.3.31/" title="2026.3.31"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.3.31"/></a><div class="content"><a class="title" href="/2026/03/31/2026.3.31/" title="2026.3.31">2026.3.31</a><time datetime="2026-03-30T16:00:00.000Z" title="发表于 2026-03-31 00:00:00">2026-03-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/30/2026.3.30/" title="2026.3.30"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.3.30"/></a><div class="content"><a class="title" href="/2026/03/30/2026.3.30/" title="2026.3.30">2026.3.30</a><time datetime="2026-03-29T16:00:00.000Z" title="发表于 2026-03-30 00:00:00">2026-03-30</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png);"><div id="footer-wrap"><div class="copyright">&copy;2025 - 2026 By m1kasaz</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text"><i class="fa-brands fa-gratipay"></i></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  let initFn = window.walineFn || null
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const destroyWaline = ele => ele.destroy()
+
+  const initWaline = (Fn, el = document, path = window.location.pathname) => {
+    const waline = Fn({
+      el: el.querySelector('#waline-wrap'),
+      serverURL: 'https://waline.m1kasaz.top/',
+      pageview: false,
+      dark: 'html[data-theme="dark"]',
+      comment: false,
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyWaline = () => {
+        destroyWaline(waline)
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const loadWaline = (el, path) => {
+    if (initFn) initWaline(initFn, el, path)
+    else {
+      btf.getCSS('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.css')
+        .then(() => import('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.js'))
+        .then(({ init }) => {
+          initFn = init || Waline.init
+          initWaline(initFn, el, path)
+          window.walineFn = initFn
+        })
+    }
+  }
+
+  if (isShuoshuo) {
+    'Waline' === 'Waline'
+      ? window.shuoshuoComment = { loadComment: loadWaline } 
+      : window.loadOtherComment = loadWaline
+    return
+  }
+
+  if ('Waline' === 'Waline' || !false) {
+    if (false) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+    else setTimeout(loadWaline, 0)
+  } else {
+    window.loadOtherComment = loadWaline
+  }
+})()</script></div><div class="aplayer no-destroy" data-id="8505096637" data-server="tecent" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><link rel="stylesheet" href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.js"></script><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/meting/2.0.1/Meting.min.js"></script><script>(() => {
+  const destroyAplayer = () => {
+    if (window.aplayers) {
+      for (let i = 0; i < window.aplayers.length; i++) {
+        if (!window.aplayers[i].options.fixed) {
+          window.aplayers[i].destroy()
+        }
+      }
+    }
+  }
+
+  const runMetingJS = () => {
+    typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+  }
+
+  btf.addGlobalFn('pjaxSend', destroyAplayer, 'destroyAplayer')
+  btf.addGlobalFn('pjaxComplete', loadMeting, 'runMetingJS')
+})()</script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true 
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MultiBot项目优化与反思 | m1kasaz</title><meta name="author" content="m1kasaz"><meta name="copyright" content="m1kasaz"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="对 MultiBot 项目进行优化与反思，聚焦于技术简历、项目主链路、RAG 与 Agent 质检等落地角度。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MultiBot项目优化与反思">
+<meta property="og:url" content="http://m1kasaz.github.io/2026/07/19/2026.7.19/index.html">
+<meta property="og:site_name" content="m1kasaz">
+<meta property="og:description" content="对 MultiBot 项目进行优化与反思，聚焦于技术简历、项目主链路、RAG 与 Agent 质检等落地角度。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg">
+<meta property="article:published_time" content="2026-07-18T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-18T16:00:00.000Z">
+<meta property="article:author" content="m1kasaz">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="项目优化">
+<meta property="article:tag" content="反思">
+<meta property="article:tag" content="MultiBot">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MultiBot项目优化与反思",
+  "url": "http://m1kasaz.github.io/2026/07/19/2026.7.19/",
+  "image": "https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg",
+  "datePublished": "2026-07-18T16:00:00.000Z",
+  "dateModified": "2026-07-18T16:00:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "m1kasaz",
+      "url": "http://m1kasaz.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://m1kasaz.github.io/2026/07/19/2026.7.19/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MultiBot项目优化与反思',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">35</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">17</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">m1kasaz</span></a><a class="nav-page-title" href="/"><span class="site-name">MultiBot项目优化与反思</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MultiBot项目优化与反思</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-18T16:00:00.000Z" title="发表于 2026-07-19 00:00:00">2026-07-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-07-18T16:00:00.000Z" title="更新于 2026-07-19 00:00:00">2026-07-19</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE/%E9%9A%8F%E7%AC%94/">随笔</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>5分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="项目思考">项目思考</h2>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">运行架构：参与建设轻量级 AI Agent 运行时，打通 CLI、Gateway、WebUI、OpenAI-compatible API 四类核心交付入口，将消息总线、Agent Loop、Session、Cron、Heartbeat 等能力解耦并下沉到统一运行时中，实现多形态接入与底层能力的一次开发、多端复用。</span><br><span class="line"></span><br><span class="line">执行闭环：围绕工具调用型 LLM 执行链路实现多轮推理、流式响应、子代理协作、上下文裁剪与中断恢复等核心能力，形成覆盖消息接入 → 推理执行 → 会话持久化 → 结果分发的完整 Agent 执行闭环，保障复杂任务在长链路下的稳定性与可恢复性。</span><br><span class="line"></span><br><span class="line">扩展体系：完善多渠道与多模型扩展体系，仓库内置 15 个聊天渠道模块与 35 个 Provider 配置项，并沉淀 Session、Memory、Cron、Heartbeat 等长期运行能力，支持定时提醒、异步任务执行与长期目标推进等典型智能体场景。</span><br></pre></td></tr></table></figure>
+<p>MultiBot项目优化与反思。<br>
+第一部分：直接针对简历上的内容进行review了</p>
+<ol>
+<li>技术名词太多，盲目堆砌技术词汇，很少或几乎没有体现出思考（Thinking），整个项目的死人感非常重</li>
+<li>技术名词带来的另一个问题，面面俱到没有重点，说白了就是半吊子，相比于面试一问就露陷，面试官可能连问的兴趣都没有</li>
+<li>很多名词根本没必要写，没有问的角度，写出来也没什么意义，而且大概率也不是自己做过的</li>
+<li>缺少一个上线</li>
+</ol>
+<p>重构了一下项目，建议将重点放在这三块：</p>
+<ol>
+<li>项目的主链路，即从用户提出问题，到CLI或Web渲染出回复的整个流程</li>
+<li>RAG技术，非常适合落地的角度，简单说和具体说都非常能谈，而且实用性也不差</li>
+<li>Agent质检，许多人都忽视但是非常重要的一个角度，答得好很加分，简单来说，质检就是检查AI回复的质量，这个回复不一定就只是回复的内容，而是落实到具体的场景，就比如对于SOP，你可以采用&quot;双跑模式&quot;，对比AI跑出的结果和客服回复的结果对比，构建出AI的准确率，这样&quot;AI是否可用&quot;才能得到很好的量化，随之引出&quot;评测集&quot;&quot;标准数据集&quot;等等概念，还是很有深度的</li>
+</ol>
+<hr>
+<h2 id="模拟面试">模拟面试</h2>
+<ol>
+<li><strong>你在简历中提到，在将 Agent 引入 SOP 流程时，针对工具规模膨胀导致的上下文爆炸与决策准确率衰减问题，你最终放弃了标准的 Tool Calling，转而采用了 Tool Pre-binding（工具前置方案），按场景静态绑定最小工具集。</strong></li>
+</ol>
+<ul>
+<li>
+<p>请你详细阐述一下：这个工具前置方案（Tool Pre-binding）的具体架构设计和匹配链路是怎样的？</p>
+</li>
+<li>
+<p>你是如何定义和划分“场景”、并实现“最小工具集”的静态绑定的？</p>
+</li>
+<li>
+<p>延伸思考一下：如果未来运营场景进一步爆炸，静态绑定导致配置维护成本过高，你有什么动态演进（例如动态路由或分层检索工具）的思路吗？</p>
+<p>答：我们有配置平台能将RPC直接配置成工具，Agent在调用之前就能显示地在自己的工具库里面找到，每个SOP的节点都允许绑定一些rpc，Agent在运行到这些节点的时候就自动调用这些rpc，执行相应的动作，这就是所谓的【工具前置】，而不是AI没运行到一个节点，还需要思考要调用的工具。</p>
+<p>【场景】的划分是通过【意图识别】实现的，这个Agent会根据用户首次进线的内容，识别出对应的场景，将这个工单标记为对应的场景，然后通过路由算法交给对应的客服。</p>
+<p>如果场景爆炸，可以通过【静态加动态】方式去实现，一部分关键信息，或者关键操作，还是需要静态的绑定一个工具集，其他与业务不太相关的工具，可以通过【动态绑定】的方式让Agent自行获取，可以根据场景划分出一些工具，缩小这个Agent的检索范围</p>
+</li>
+</ul>
+<ol start="2">
+<li><strong>在分布式和跨地域网络不稳定的场景下，<code>etcd watch</code> 虽然实时性高，但极易受到网络闪断、自愈重连等因素的影响，从而导致事件丢失（比如 Watcher 滞后或者因为 etcd 服务端 Compact 导致旧的 Revision 无法追赶，触发 <code>ErrCompacted</code> 错误）。</strong></li>
+</ol>
+<ul>
+<li>
+<p>当发生跨地域网络抖动、etcd watch 监听断开或丢失事件时，你是如何保证各个节点本地缓存（Guava）与远端真实配置的最终一致性的？</p>
+</li>
+<li>
+<p>在 etcd 触发重连或监测到事件失效时，你的本地缓存主动拉取和被动接收（Watch）之间，是如何做版本校验（如 Revision/Version）和并发冲突控制的，以防止“长轮询/定时拉取”与“异步通知”产生时序错乱、覆盖新数据的问题？</p>
+<p>答：这是一个关于兜底方案的讨论</p>
+<ol>
+<li>
+<p>本地缓存每隔一段时间都会主动请求配置文件，不完全依赖主动更新</p>
+</li>
+<li>
+<p>使用旧的配置文件，也不会影响服务的可用性</p>
+</li>
+</ol>
+<p>如果每次大模型请求过来，网关都直接去 etcd 或 ZooKeeper 里读取一次配置：</p>
+<ul>
+<li>
+<p><strong>网络 I/O 成为瓶颈：</strong> 即使 etcd 性能再高，它也是一个独立部署的分布式组件，每次读取都意味着一次网络跨源调用（Network Hop）和对象的反序列化。对于高并发的 MaaS 网关来说，这会极大地拉高 P99 延迟。</p>
+</li>
+<li>
+<p><strong>本地缓存（如 Guava/Caffeine）的必然性：</strong> 为了追求微秒级的响应，必须把配置直接“贴”在网关进程的内存里。</p>
+</li>
+</ul>
+</li>
+</ul>
+<ol start="3">
+<li><strong>关于“上下文裁剪”：在 MultiBot 中，你设计了怎样的裁剪策略？是基于滑窗（Sliding Window）、Token 计数硬截断，还是引入了总结（Summary）节点做语义压缩？在裁剪时，如何确保系统提示词（System Prompt）和近期关键记忆不丢失？</strong></li>
+</ol>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">段位</th>
+<th style="text-align:left">核心做法</th>
+<th style="text-align:left">优势</th>
+<th style="text-align:left">劣势</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>初段：动态滑动窗口</strong><br>(Token 计数硬截断)</td>
+<td style="text-align:left">保持 System Prompt 不动，利用本地分词器（如 jtokkit）从最新消息向后累加 Token，达到阈值（如 70%）时直接丢弃最早的对话。</td>
+<td style="text-align:left">性能极高，响应快，无额外大模型开销。</td>
+<td style="text-align:left">随着对话进行，Agent 会完全遗忘较早的历史上下文。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>中段：摘要滚动压缩</strong><br>(Conversation Summary)</td>
+<td style="text-align:left">Token 触发临界点时，异步调用低成本模型将老旧的 N 轮对话压缩为结构化摘要。拼装格式为：<code>System Prompt</code> + <code>历史摘要</code> + <code>近期真实对话明细</code>。</td>
+<td style="text-align:left">既保留了长期记忆的语义，又有效控制了当前的 Token 消耗。</td>
+<td style="text-align:left">存在额外的异步大模型调用成本，且伴随一定的处理延迟。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>高段：基于语义检索的动态记忆</strong><br>(RAG-based Memory)</td>
+<td style="text-align:left">将历史对话按 Session 切片并向量化，存入向量数据库（如 Chroma）。用户提问时，通过语义相似度检索（Vector Recall）捞出相关片段，动态注入 Prompt。</td>
+<td style="text-align:left">理论上具备无限的记忆容量，能够精准唤醒并对齐很久之前的对话细节。</td>
+<td style="text-align:left">极其依赖向量检索的准确度，可能存在检索失误导致上下文断层的情况。</td>
+</tr>
+</tbody>
+</table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io">m1kasaz</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io/2026/07/19/2026.7.19/">http://m1kasaz.github.io/2026/07/19/2026.7.19/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://m1kasaz.github.io" target="_blank">m1kasaz</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/AI/">AI</a><a class="post-meta__tags" href="/tags/%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96/">项目优化</a><a class="post-meta__tags" href="/tags/%E5%8F%8D%E6%80%9D/">反思</a><a class="post-meta__tags" href="/tags/MultiBot/">MultiBot</a></div><div class="post-share"><div class="social-share" data-image="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">LeetCode22：括号生成</div></div><div class="info-2"><div class="info-item-1">LeetCode22：括号生成 22. 括号生成 - 力扣（LeetCode） 数字 n 代表生成括号的对数，请你设计一个函数，用于能够生成所有可能的并且 有效的 括号组合。 思路：   最直接的思路，构建一个长度为2n的数组，针对每个位置枚举两种情况，最后校验生成的字符串是否合格(显然这个指数级别的时间复杂度不满足条件)   仔细思考左括号和右括号的限制条件（在第一个思路上进行减枝），对于当前持有left个左括号和right个右括号的数组来说，需要满足  左括号数量必须小于n 右括号数量必须小于左括号  基于此我们可以得到加括号的限制条件：  如果左括号的数量小于n，仍可以继续插入左括号 如果右括号的数量小于左括号，仍可以插入右括号 递归出口为右括号已经全部插入    代码实现如下： &#123;fold&#125;1234567891011121314151617181920212223242526272829303132333435363738394041424344454647class Solution &#123;    public...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/27/2026.3.27/" title="ai agent开发(持续更新)"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260327215157767.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-27</div><div class="info-item-2">ai agent开发(持续更新)</div></div><div class="info-2"><div class="info-item-1">提示词（prompt） zero-shot：零样本学习，无提示 few-shot：少样本学习，少量示例 检索增强（RAG） 通过构建向量数据库等为大模型提供新的知识库，大模型通过检索这些知识库学习新的知识。 我们可以通过文本嵌入大模型将文本转换成向量，模型会把一段文本拆分成多个维度（抽象语义特征）的数字列表。 进行向量匹配时，主要使用余弦相似度算法来确定两段文本的相似度。  余弦相似度：计算两个向量的夹角。  对于两个 n 维向量 $A = [a_1,a_2,…,a_n]$、$B = [b_1,b_2,…,b_n]$，余弦相似度计算公式为：$$ \cos(\theta) = \frac{\sum_{i=1}^{n} a_i b_i}{\sqrt{\sum_{i=1}^{n} a_i^2} \cdot \sqrt{\sum_{i=1}^{n} b_i^2}} $$  LangChain 三种模型：LLM、聊天模型、 文本转向量： 123456from langchain_community.embeddings import DashScopeEmbeddingsmodel =...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E6%80%9D%E8%80%83"><span class="toc-number">1.</span> <span class="toc-text">项目思考</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A8%A1%E6%8B%9F%E9%9D%A2%E8%AF%95"><span class="toc-number">2.</span> <span class="toc-text">模拟面试</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/07/19/2026.7.19/" title="MultiBot项目优化与反思">MultiBot项目优化与反思</a><time datetime="2026-07-18T16:00:00.000Z" title="发表于 2026-07-19 00:00:00">2026-07-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="LeetCode22：括号生成"/></a><div class="content"><a class="title" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成">LeetCode22：括号生成</a><time datetime="2026-07-17T16:00:00.000Z" title="发表于 2026-07-18 00:00:00">2026-07-18</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/01/2026.4.1/" title="2026.4.1"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.4.1"/></a><div class="content"><a class="title" href="/2026/04/01/2026.4.1/" title="2026.4.1">2026.4.1</a><time datetime="2026-03-31T16:00:00.000Z" title="发表于 2026-04-01 00:00:00">2026-04-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/31/2026.3.31/" title="2026.3.31"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.3.31"/></a><div class="content"><a class="title" href="/2026/03/31/2026.3.31/" title="2026.3.31">2026.3.31</a><time datetime="2026-03-30T16:00:00.000Z" title="发表于 2026-03-31 00:00:00">2026-03-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/30/2026.3.30/" title="2026.3.30"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.3.30"/></a><div class="content"><a class="title" href="/2026/03/30/2026.3.30/" title="2026.3.30">2026.3.30</a><time datetime="2026-03-29T16:00:00.000Z" title="发表于 2026-03-30 00:00:00">2026-03-30</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"><div id="footer-wrap"><div class="copyright">&copy;2025 - 2026 By m1kasaz</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text"><i class="fa-brands fa-gratipay"></i></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  let initFn = window.walineFn || null
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const destroyWaline = ele => ele.destroy()
+
+  const initWaline = (Fn, el = document, path = window.location.pathname) => {
+    const waline = Fn({
+      el: el.querySelector('#waline-wrap'),
+      serverURL: 'https://waline.m1kasaz.top/',
+      pageview: false,
+      dark: 'html[data-theme="dark"]',
+      comment: false,
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyWaline = () => {
+        destroyWaline(waline)
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const loadWaline = (el, path) => {
+    if (initFn) initWaline(initFn, el, path)
+    else {
+      btf.getCSS('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.css')
+        .then(() => import('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.js'))
+        .then(({ init }) => {
+          initFn = init || Waline.init
+          initWaline(initFn, el, path)
+          window.walineFn = initFn
+        })
+    }
+  }
+
+  if (isShuoshuo) {
+    'Waline' === 'Waline'
+      ? window.shuoshuoComment = { loadComment: loadWaline } 
+      : window.loadOtherComment = loadWaline
+    return
+  }
+
+  if ('Waline' === 'Waline' || !false) {
+    if (false) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+    else setTimeout(loadWaline, 0)
+  } else {
+    window.loadOtherComment = loadWaline
+  }
+})()</script></div><div class="aplayer no-destroy" data-id="8505096637" data-server="tecent" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><link rel="stylesheet" href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.js"></script><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/meting/2.0.1/Meting.min.js"></script><script>(() => {
+  const destroyAplayer = () => {
+    if (window.aplayers) {
+      for (let i = 0; i < window.aplayers.length; i++) {
+        if (!window.aplayers[i].options.fixed) {
+          window.aplayers[i].destroy()
+        }
+      }
+    }
+  }
+
+  const runMetingJS = () => {
+    typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+  }
+
+  btf.addGlobalFn('pjaxSend', destroyAplayer, 'destroyAplayer')
+  btf.addGlobalFn('pjaxComplete', loadMeting, 'runMetingJS')
+})()</script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true 
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
