@@ -4,33 +4,13 @@
   
     
     <entry>
-      <title>MultiBot项目优化与反思</title>
+      <title>2026-7-19</title>
       <link href="/2026/07/19/2026.7.19/"/>
       <url>/2026/07/19/2026.7.19/</url>
       
         <content type="html"><![CDATA[<h2 id="项目思考">项目思考</h2><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">运行架构：参与建设轻量级 AI Agent 运行时，打通 CLI、Gateway、WebUI、OpenAI-compatible API 四类核心交付入口，将消息总线、Agent Loop、Session、Cron、Heartbeat 等能力解耦并下沉到统一运行时中，实现多形态接入与底层能力的一次开发、多端复用。</span><br><span class="line"></span><br><span class="line">执行闭环：围绕工具调用型 LLM 执行链路实现多轮推理、流式响应、子代理协作、上下文裁剪与中断恢复等核心能力，形成覆盖消息接入 → 推理执行 → 会话持久化 → 结果分发的完整 Agent 执行闭环，保障复杂任务在长链路下的稳定性与可恢复性。</span><br><span class="line"></span><br><span class="line">扩展体系：完善多渠道与多模型扩展体系，仓库内置 15 个聊天渠道模块与 35 个 Provider 配置项，并沉淀 Session、Memory、Cron、Heartbeat 等长期运行能力，支持定时提醒、异步任务执行与长期目标推进等典型智能体场景。</span><br></pre></td></tr></table></figure><p>MultiBot项目优化与反思。<br>第一部分：直接针对简历上的内容进行review了</p><ol><li>技术名词太多，盲目堆砌技术词汇，很少或几乎没有体现出思考（Thinking），整个项目的死人感非常重</li><li>技术名词带来的另一个问题，面面俱到没有重点，说白了就是半吊子，相比于面试一问就露陷，面试官可能连问的兴趣都没有</li><li>很多名词根本没必要写，没有问的角度，写出来也没什么意义，而且大概率也不是自己做过的</li><li>缺少一个上线</li></ol><p>重构了一下项目，建议将重点放在这三块：</p><ol><li>项目的主链路，即从用户提出问题，到CLI或Web渲染出回复的整个流程</li><li>RAG技术，非常适合落地的角度，简单说和具体说都非常能谈，而且实用性也不差</li><li>Agent质检，许多人都忽视但是非常重要的一个角度，答得好很加分，简单来说，质检就是检查AI回复的质量，这个回复不一定就只是回复的内容，而是落实到具体的场景，就比如对于SOP，你可以采用&quot;双跑模式&quot;，对比AI跑出的结果和客服回复的结果对比，构建出AI的准确率，这样&quot;AI是否可用&quot;才能得到很好的量化，随之引出&quot;评测集&quot;&quot;标准数据集&quot;等等概念，还是很有深度的</li></ol><hr><h2 id="模拟面试">模拟面试</h2><ol><li><strong>你在简历中提到，在将 Agent 引入 SOP 流程时，针对工具规模膨胀导致的上下文爆炸与决策准确率衰减问题，你最终放弃了标准的 Tool Calling，转而采用了 Tool Pre-binding（工具前置方案），按场景静态绑定最小工具集。</strong></li></ol><ul><li><p>请你详细阐述一下：这个工具前置方案（Tool Pre-binding）的具体架构设计和匹配链路是怎样的？</p></li><li><p>你是如何定义和划分“场景”、并实现“最小工具集”的静态绑定的？</p></li><li><p>延伸思考一下：如果未来运营场景进一步爆炸，静态绑定导致配置维护成本过高，你有什么动态演进（例如动态路由或分层检索工具）的思路吗？</p><p>答：我们有配置平台能将RPC直接配置成工具，Agent在调用之前就能显示地在自己的工具库里面找到，每个SOP的节点都允许绑定一些rpc，Agent在运行到这些节点的时候就自动调用这些rpc，执行相应的动作，这就是所谓的【工具前置】，而不是AI没运行到一个节点，还需要思考要调用的工具。</p><p>【场景】的划分是通过【意图识别】实现的，这个Agent会根据用户首次进线的内容，识别出对应的场景，将这个工单标记为对应的场景，然后通过路由算法交给对应的客服。</p><p>如果场景爆炸，可以通过【静态加动态】方式去实现，一部分关键信息，或者关键操作，还是需要静态的绑定一个工具集，其他与业务不太相关的工具，可以通过【动态绑定】的方式让Agent自行获取，可以根据场景划分出一些工具，缩小这个Agent的检索范围</p></li></ul><ol start="2"><li><strong>在分布式和跨地域网络不稳定的场景下，<code>etcd watch</code> 虽然实时性高，但极易受到网络闪断、自愈重连等因素的影响，从而导致事件丢失（比如 Watcher 滞后或者因为 etcd 服务端 Compact 导致旧的 Revision 无法追赶，触发 <code>ErrCompacted</code> 错误）。</strong></li></ol><ul><li><p>当发生跨地域网络抖动、etcd watch 监听断开或丢失事件时，你是如何保证各个节点本地缓存（Guava）与远端真实配置的最终一致性的？</p></li><li><p>在 etcd 触发重连或监测到事件失效时，你的本地缓存主动拉取和被动接收（Watch）之间，是如何做版本校验（如 Revision/Version）和并发冲突控制的，以防止“长轮询/定时拉取”与“异步通知”产生时序错乱、覆盖新数据的问题？</p><p>答：这是一个关于兜底方案的讨论</p><ol><li><p>本地缓存每隔一段时间都会主动请求配置文件，不完全依赖主动更新</p></li><li><p>使用旧的配置文件，也不会影响服务的可用性</p></li></ol><p>如果每次大模型请求过来，网关都直接去 etcd 或 ZooKeeper 里读取一次配置：</p><ul><li><p><strong>网络 I/O 成为瓶颈：</strong> 即使 etcd 性能再高，它也是一个独立部署的分布式组件，每次读取都意味着一次网络跨源调用（Network Hop）和对象的反序列化。对于高并发的 MaaS 网关来说，这会极大地拉高 P99 延迟。</p></li><li><p><strong>本地缓存（如 Guava/Caffeine）的必然性：</strong> 为了追求微秒级的响应，必须把配置直接“贴”在网关进程的内存里。</p></li></ul></li></ul><ol start="3"><li><strong>关于“上下文裁剪”：在 MultiBot 中，你设计了怎样的裁剪策略？是基于滑窗（Sliding Window）、Token 计数硬截断，还是引入了总结（Summary）节点做语义压缩？在裁剪时，如何确保系统提示词（System Prompt）和近期关键记忆不丢失？</strong></li></ol><table><thead><tr><th style="text-align:left">段位</th><th style="text-align:left">核心做法</th><th style="text-align:left">优势</th><th style="text-align:left">劣势</th></tr></thead><tbody><tr><td style="text-align:left"><strong>初段：动态滑动窗口</strong><br>(Token 计数硬截断)</td><td style="text-align:left">保持 System Prompt 不动，利用本地分词器（如 jtokkit）从最新消息向后累加 Token，达到阈值（如 70%）时直接丢弃最早的对话。</td><td style="text-align:left">性能极高，响应快，无额外大模型开销。</td><td style="text-align:left">随着对话进行，Agent 会完全遗忘较早的历史上下文。</td></tr><tr><td style="text-align:left"><strong>中段：摘要滚动压缩</strong><br>(Conversation Summary)</td><td style="text-align:left">Token 触发临界点时，异步调用低成本模型将老旧的 N 轮对话压缩为结构化摘要。拼装格式为：<code>System Prompt</code> + <code>历史摘要</code> + <code>近期真实对话明细</code>。</td><td style="text-align:left">既保留了长期记忆的语义，又有效控制了当前的 Token 消耗。</td><td style="text-align:left">存在额外的异步大模型调用成本，且伴随一定的处理延迟。</td></tr><tr><td style="text-align:left"><strong>高段：基于语义检索的动态记忆</strong><br>(RAG-based Memory)</td><td style="text-align:left">将历史对话按 Session 切片并向量化，存入向量数据库（如 Chroma）。用户提问时，通过语义相似度检索（Vector Recall）捞出相关片段，动态注入 Prompt。</td><td style="text-align:left">理论上具备无限的记忆容量，能够精准唤醒并对齐很久之前的对话细节。</td><td style="text-align:left">极其依赖向量检索的准确度，可能存在检索失误导致上下文断层的情况。</td></tr></tbody></table>]]></content>
       
       
-      <categories>
-          
-          <category> 项目 </category>
-          
-          <category> 随笔 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> AI </tag>
-            
-            <tag> 项目优化 </tag>
-            
-            <tag> 反思 </tag>
-            
-            <tag> MultiBot </tag>
-            
-        </tags>
       
     </entry>
     
@@ -44,26 +24,6 @@
         <content type="html"><![CDATA[<p>LeetCode22：括号生成<br><a href="https://leetcode.cn/problems/generate-parentheses/description/?envType=study-plan-v2&amp;envId=top-100-liked">22. 括号生成 - 力扣（LeetCode）</a></p><p>数字 <code>n</code> 代表生成括号的对数，请你设计一个函数，用于能够生成所有可能的并且 <strong>有效的</strong> 括号组合。</p><p>思路：</p><ol><li><p>最直接的思路，构建一个长度为<code>2n</code>的数组，针对每个位置枚举两种情况，最后校验生成的字符串是否合格(显然这个指数级别的时间复杂度不满足条件)</p></li><li><p>仔细思考左括号和右括号的限制条件（在第一个思路上进行<code>减枝</code>），对于当前持有<code>left</code>个左括号和<code>right</code>个右括号的数组来说，需要满足</p><ol><li>左括号数量必须小于n</li><li>右括号数量必须小于左括号</li></ol><p>基于此我们可以得到加括号的限制条件：</p><ol><li>如果左括号的数量小于n，仍可以继续插入左括号</li><li>如果右括号的数量小于左括号，仍可以插入右括号<br>递归出口为右括号已经全部插入</li></ol></li></ol><p>代码实现如下：</p><figure class="highlight java"><figcaption><span>&#123;fold&#125;</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Solution</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> List&lt;String&gt; <span class="title function_">generateParenthesis</span><span class="params">(<span class="type">int</span> n)</span> &#123;</span><br><span class="line"></span><br><span class="line">        List&lt;String&gt; ans = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        dfs(<span class="number">0</span>, <span class="number">0</span>, <span class="keyword">new</span> <span class="title class_">StringBuilder</span>(), ans, n);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> ans;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  </span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">dfs</span><span class="params">(<span class="type">int</span> left, <span class="type">int</span> right, StringBuilder path, List&lt;String&gt; ans, <span class="type">int</span> n)</span> &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (right == n) &#123;</span><br><span class="line"></span><br><span class="line">            ans.add(path.toString());</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(left &lt; n) &#123;</span><br><span class="line"></span><br><span class="line">            path.append(<span class="string">&#x27;(&#x27;</span>);</span><br><span class="line"></span><br><span class="line">            dfs(left+<span class="number">1</span>, right, path, ans, n);</span><br><span class="line"></span><br><span class="line">            path.deleteCharAt(path.length()-<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(right &lt; left) &#123;</span><br><span class="line"></span><br><span class="line">            path.append(<span class="string">&#x27;)&#x27;</span>);</span><br><span class="line"></span><br><span class="line">            dfs(left, right+<span class="number">1</span>,path, ans, n);</span><br><span class="line"></span><br><span class="line">            path.deleteCharAt(path.length()-<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
       
       
-      <categories>
-          
-          <category> 算法 </category>
-          
-          <category> LeetCode </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 算法 </tag>
-            
-            <tag> LeetCode </tag>
-            
-            <tag> 递归 </tag>
-            
-            <tag> 回溯 </tag>
-            
-        </tags>
       
     </entry>
     
