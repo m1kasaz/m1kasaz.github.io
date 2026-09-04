@@ -1,0 +1,483 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>RAG-Core | m1kasaz</title><meta name="author" content="m1kasaz"><meta name="copyright" content="m1kasaz"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="记录学习 RAG 课程的启发：什么是检索增强（What）、为什么需要 RAG（Why）、检索如何执行与评估（How），以及分块、Query Rewriting、Encoder 等优化策略。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RAG-Core">
+<meta property="og:url" content="http://m1kasaz.github.io/2026/09/04/RAG-Core/index.html">
+<meta property="og:site_name" content="m1kasaz">
+<meta property="og:description" content="记录学习 RAG 课程的启发：什么是检索增强（What）、为什么需要 RAG（Why）、检索如何执行与评估（How），以及分块、Query Rewriting、Encoder 等优化策略。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png">
+<meta property="article:published_time" content="2026-09-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-09-03T16:00:00.000Z">
+<meta property="article:author" content="m1kasaz">
+<meta property="article:tag" content="AI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "RAG-Core",
+  "url": "http://m1kasaz.github.io/2026/09/04/RAG-Core/",
+  "image": "https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png",
+  "datePublished": "2026-09-03T16:00:00.000Z",
+  "dateModified": "2026-09-03T16:00:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "m1kasaz",
+      "url": "http://m1kasaz.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://m1kasaz.github.io/2026/09/04/RAG-Core/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'RAG-Core',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">36</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">11</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">m1kasaz</span></a><a class="nav-page-title" href="/"><span class="site-name">RAG-Core</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">RAG-Core</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-09-03T16:00:00.000Z" title="发表于 2026-09-04 00:00:00">2026-09-04</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-09-03T16:00:00.000Z" title="更新于 2026-09-04 00:00:00">2026-09-04</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI/">AI</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>12分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>记录由这篇课程得到的一些关于RAG的启发。</p>
+<h3 id="What-RAG">What RAG</h3>
+<p>RAG：检索增强，就像他的名字一样，RAG的过程大概就分为两个部分</p>
+<ol>
+<li><strong>Retrive</strong>（检索）<br>
+我们知道LLM的原理就是通过你输入的Prompt不断预测下一个词，而且这个词的概率会随着**上下文（Context）**的变化而变化，RAG就是通过改变Prompt或者说Context的方式，影响模型的回答。</li>
+</ol>
+<ul>
+<li>向量数据库已经被认为是比传统数据库更高效的一种检索库<br>
+在我们输入一段初始的Prompt，模型在处理上下文的时候，系统会先通过某个<strong>编码器（Embedding）<strong>将文本convert成向量，然后去</strong>向量数据库</strong>（Vector SQL）检索（Retrive）一些相近的知识/上下文，将其填充到Prompt，然后再调用大模型生成回答</li>
+</ul>
+<ol>
+<li><strong>Augmented</strong>（增强）<br>
+在检索回文档后，我们将检索信息和原来的提示词拼接起来，我们称这个过程为增强（<strong>Augmented</strong>），下面有一个提示词模版，可以塞给大模型让他生成，这样对比结果会更加明显</li>
+</ol>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">你是一个项目问答助手。请对比展示「未使用 RAG 增强」和「使用 RAG 增强」时，回答质量有什么不同。</span><br><span class="line"></span><br><span class="line">用户问题：</span><br><span class="line">&#123;&#123;USER_QUESTION&#125;&#125;</span><br><span class="line"></span><br><span class="line">一、未使用 RAG 增强时</span><br><span class="line"></span><br><span class="line">请在不读取任何外部资料、不访问项目文档、不使用知识库检索结果的情况下回答用户问题。</span><br><span class="line">如果信息不足，请明确说明“当前只能基于通用知识回答”。</span><br><span class="line"></span><br><span class="line">请输出：</span><br><span class="line">【增强前回答】</span><br><span class="line">&#123;&#123;ANSWER_WITHOUT_RAG&#125;&#125;</span><br><span class="line"></span><br><span class="line">二、使用 RAG 增强后</span><br><span class="line"></span><br><span class="line">下面是从知识库中检索到的资料片段，请严格基于这些资料回答用户问题。</span><br><span class="line">如果资料片段中没有提到某些信息，请不要编造。</span><br><span class="line"></span><br><span class="line">【检索信息】</span><br><span class="line">&#123;&#123;RETRIEVED_CONTEXT&#125;&#125;</span><br><span class="line"></span><br><span class="line">其中，每条检索信息的格式如下：</span><br><span class="line"></span><br><span class="line">[资料片段 &#123;&#123;INDEX&#125;&#125;]</span><br><span class="line">来源：&#123;&#123;SOURCE_TITLE&#125;&#125;</span><br><span class="line">更新时间：&#123;&#123;UPDATED_AT&#125;&#125;</span><br><span class="line">相关度：&#123;&#123;RELEVANCE_SCORE&#125;&#125;</span><br><span class="line">内容：</span><br><span class="line">&#123;&#123;CHUNK_CONTENT&#125;&#125;</span><br><span class="line"></span><br><span class="line">请基于以上检索信息回答用户问题。</span><br><span class="line"></span><br><span class="line">请输出：</span><br><span class="line">【增强后回答】</span><br><span class="line">&#123;&#123;ANSWER_WITH_RAG&#125;&#125;</span><br><span class="line"></span><br><span class="line">三、对比总结</span><br><span class="line"></span><br><span class="line">请从以下角度对比增强前和增强后的区别：</span><br><span class="line">1. 回答是否更具体</span><br><span class="line">2. 是否能引用项目中的真实信息</span><br><span class="line">3. 是否减少了模型编造</span><br><span class="line">4. 是否能说明信息来源</span><br><span class="line">5. 是否能发现资料缺失</span><br><span class="line"></span><br><span class="line">请输出：</span><br><span class="line">【差异对比】</span><br><span class="line">&#123;&#123;COMPARISON_SUMMARY&#125;&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="Why-RAG">Why RAG</h3>
+<p>RAG的出现在大方向上说，是因为模型的微调/再训练成本太高，如果只是一些最新/专业领域的知识，对于模型来说他们不是没有回答能力，他们只是不知道这些事，在这种情况下，重新训练的成本太高了，不如在输入阶段直接把这些信息塞进去，虽然比较粗暴但确实很实用，但总不能在每次输入的时候都把这些信息带入吧，RAG就是专门干这事的，下面把这些信息划分：</p>
+<ol>
+<li>众所周知大模型的训练都是基于一些<strong>历史数据</strong>，即使参数量再大，他也不知道一些最新的数据/信息，比如你问大模型</li>
+</ol>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">詹姆斯为什么转会76人？</span><br></pre></td></tr></table></figure>
+<p>他压根不知道这个信息，只会生成一些非常通用的回答，甚至生成一些幻觉，会把别的球星的转会原因告诉你</p>
+<ul>
+<li>Q：这里肯定有人要问，主播主播，直接用Tool Calling调用搜索工具不行吗？<br>
+A：他们看似都在解决大模型处理不了最新知识的问题，但这两种方案本质上就不一样，调工具本质上没有做加强提示词这一步，而是在大模型<strong>不断Thinking的时候出现这个Calling</strong>，然后才会调用工具，注入上下文。而RAG是在输入Prompt的时候进行增加，在大模型<strong>首轮Thinking</strong>的时候，他就<strong>已经知道相关的最新知识</strong>。所以Calling并没有将该问题的解决闭环在系统设计（虽然有时候RAG也会被设计成Tool）中，而是依赖LLM的Tool Calling能力。</li>
+</ul>
+<ol>
+<li>众所周知有一些内容只有特定领域，甚至企业内部才会用到，比如当你问：</li>
+</ol>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">字节跳动的员工请假一般都要走哪些流程，在哪可以请假</span><br></pre></td></tr></table></figure>
+<p>这些内部知识就需要专门搭建的RAG知识库提供帮助，比如在知识库里放入一些企业文档，在某个文档下就会有关于这个问题的答案，然后在检索过程中被塞入上下文</p>
+<h3 id="How-RAG">How RAG</h3>
+<p>这里我会分为三部分介绍：</p>
+<h4 id="How-RAG-execute">How RAG execute</h4>
+<p>这张图大致展现了检索的大致过程，我会由易到难，介绍一些每一层的设计</p>
+<p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png" alt=""></p>
+<ol>
+<li><strong>Metadata Filter</strong><br>
+最简单的一层，和真正进行<strong>业务语义</strong>检索的<strong>Search</strong>过程不同，这个Filter要干的事非常清晰且明确，通过一些非常基础的信息对文档进行过滤，例如：
+<ol>
+<li>Date（时间）<br>
+比如我的提示词中明确带有所需文章的准确时间</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">请帮我检索字节跳动*<span class="number">2025</span>-<span class="number">2026</span>*季度的报销政策，每个季度都要</span><br></pre></td></tr></table></figure>
+<pre><code>1. Author（作者）
+</code></pre>
+<p>比如我的提示词中清晰的写着只要某些作者的文档</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">请帮我检索*m1kasaz*该作者的所有文档</span><br></pre></td></tr></table></figure>
+<pre><code>1. …（something like this）
+</code></pre>
+<p>通过这些例子，我们对这层的设计已经有一个大概的了解，视频中有一句话说得特别好，这个过程并不是在进行检索，他只是帮你缩小检索的范围，这个缩小既包括正向又包括反向，可以很形象的理解为SQL中的WHERE语句</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> title</span><br><span class="line"><span class="keyword">FROM</span> articles</span><br><span class="line"><span class="keyword">WHERE</span> create_time <span class="keyword">BETWEEN</span> <span class="string">&#x27;$&#123;startdate&#125;&#x27;</span> <span class="keyword">AND</span> <span class="string">&#x27;$&#123;enddate&#125;&#x27;</span></span><br><span class="line">  <span class="keyword">AND</span> author <span class="keyword">LIKE</span> <span class="string">&#x27;%$&#123;author&#125;%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+<p>这一层的设计真的非常简单，但它的效果也非常好，仅仅通过一些简单过滤就可以缩小检索范围</p>
+<ol>
+<li><strong>Keywrod Search</strong><br>
+听名字也能猜个大概设计，通过<strong>关键词（Keyword）<strong>进行文章的匹配（我在想这里用匹配一词可能会比较贴切，因为这一层本质也没有直接的</strong>检索</strong>过程），以下是一些常见的Keyword层设计<br>
+假设一段提示词：</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Making pizza <span class="keyword">without</span> a pizza oven</span><br></pre></td></tr></table></figure>
+<p>现在RAG向量库中有很多文档（doc1、doc2、doc3.…），每个文档都维护了一个稀疏矩阵，用于揭示每个文档中，每个单词都出现频率，或者称为积。<br>
+然后我们通过提示词中的单词去映射对应的矩阵，这一过程称为<strong>倒排索引</strong>，因为我们在通过提示词本身进行映射，然后我们就能得到差不多这样的矩阵，有点像图论里面的连通表<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-01.png" alt=""><br>
+可以通过简单计算每个关键词的积分，求一下总和，就可以得到一个文档中某个关键词出现的大致频率，但是计算过程普遍没有这么简单，在建立倒排索引时往往会遇到一些问题：</p>
+<ol>
+<li>
+<p>这种朴素算法似乎无法解决长文本的天然优势</p>
+</li>
+<li>
+<p>一些常用语，比如<code>the、a、of</code> 在这种朴素算法下有着天然优势<br>
+这里引入两种优化算法：</p>
+</li>
+<li>
+<p>TF-IDF<br>
+简单来说，先计算一下每个词在文本中的占比（该词数/总词数），然后取对数，这样就能计算每个词的<code>稀有值</code>，然后在为矩阵中的每个数都<code>*</code> 该<code>稀有值</code> ，就能解决1和2问题，这一过程叫做TF-IDF，这个稀有值叫做每个词的<code>IDF</code> ，这个矩阵叫做<code>TF-IDF矩阵</code><br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-02.png" alt=""></p>
+</li>
+<li>
+<p>BM25（Best Matching25）<br>
+目前最流行的优化算法。其核心思想和TF-IDF差不多<br>
+- 惩罚长文本<br>
+- 惩罚频率过高的单词<br>
+- 惩罚力度可以通过调整算法中的<code>k</code>和<code>b</code>进行控制<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-03.png" alt=""><br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-04.png" alt=""></p>
+</li>
+<li>
+<p><strong>Sementic Search</strong><br>
+语义检索，通过提示词和文档的语义关联度对文档进行检索。其检索过程和<code>Transfomer</code>的机制很相似，先对<code>propmt</code>和<code>doc</code> 进行词嵌入，转化为向量，然后在一个向量空间中计算相似度。常见的相似度算法有：</p>
+</li>
+<li>
+<p>余弦相似度（Cosine Similarity）<br>
+只看“方向”是否一致，弱化模长影响，文本/语义 embedding 最常用。<br>
+$$\operatorname{cos}(x,y)=\frac{x\cdot y}{\lVert x\rVert,\lVert y\rVert}$$</p>
+</li>
+<li>
+<p>点积/内积（Dot Product / Inner Product）<br>
+同时受方向和模长影响，推荐/双塔召回常用。<br>
+$$\operatorname{cos}(x,y)=x\cdot y$$</p>
+</li>
+</ol>
+<ul>
+<li>向量不归一化时，模长大的向量更容易得到更高分</li>
+</ul>
+<ol start="3">
+<li>欧氏距离（L2 Distance）<br>
+衡量空间几何距离，常用于聚类/最近邻、特征有明确尺度含义的场景。<br>
+$$d_2(x,y)=\lVert x-y\rVert_2=\sqrt{\sum_i (x_i-y_i)^2}$$</li>
+</ol>
+<ul>
+<li>补充内容：通过Keywrod和Sementic计算出的结果需要通过一个优化算法计算出最终的排名
+<ul>
+<li><code>k</code> 用于控制排名的影响力</li>
+<li><code>beta</code> 用于控制<code>Keywrod Search</code>和<code>Sementic Search</code>的影响力<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-05.png" alt=""></li>
+</ul>
+</li>
+</ul>
+<h4 id="How-RAG-insepct">How RAG insepct</h4>
+<p>这一部分主要讨论我们如何**检验（insepct）**我们通过上面的方法召回文档的准确率。首先最重要的一件事，你得知道一份标准的正确答案，也就是该提示词在RAG之后应该召回的文档。目前主流的评估标准包括：<br>
+设：</p>
+<ul>
+<li>$R_k$：模型返回的前 $k$ 个文档集合，$|R_k|=k$</li>
+<li>$G$：该查询的相关文档集合（Ground Truth）</li>
+</ul>
+<ol>
+<li>
+<p>Precision&amp;Map（准确率），正确召回的文档数/总召回数<br>
+$$\operatorname{Precision@}k=\frac{\lvert R_k \cap G \rvert}{k}$$</p>
+</li>
+<li>
+<p>Recall（召回率），正确召回的文档数/总相关文档数（也称为Top-k）<br>
+$$\operatorname{Recall@}k=\frac{\lvert R_k \cap G \rvert}{\lvert G \rvert}$$</p>
+</li>
+<li>
+<p>MRR（倒数排名），正确召回的文档的平均排名。<br>
+设：</p>
+</li>
+</ol>
+<ul>
+<li>$N$：测试集里查询（query）的总数</li>
+<li>$\operatorname{rank}_i$：第 $i$ 个查询中，<strong>第一个相关文档</strong>在返回结果里的排名位置（从 1 开始）</li>
+<li>若前列表中没有任何相关文档，则 $\dfrac{1}{\operatorname{rank}<em>i}=0$<br>
+$$\operatorname{MRR}=\frac{1}{N}\sum</em>{i=1}^{N}\frac{1}{\operatorname{rank}_i}$$</li>
+</ul>
+<p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-06.png" alt=""></p>
+<h4 id="How-improve-RAG">How improve RAG</h4>
+<p><strong>先介绍三种主流快速检索相似向量的算法，主要用于文档召回</strong></p>
+<ol>
+<li>KNN<br>
+针对向量生成后，对比向量相似度的过程。简单来说就是将所有文档向量化以后，计算和提示词的相似度，这种全量计算会遇到几个问题</li>
+<li>全量检索的复杂度是线性的，在文档较多的情况下性能很差</li>
+<li>白白计算了很多不需要的相似度（前k个以外）<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-07.png" alt=""></li>
+<li>ANN<br>
+相比KNN算法，ANN不断检索局部最优解，初始化了一个包含多个（n个）节点的邻接图，然后随机以某个节点出发，不断向目标节点的方向遍历，直至找到最近的节点<br>
+1. 复杂度可控，限制在n个节点范围内<br>
+1. 每个节点的对比都更有意义，每次对比都能更接近目标节点<br>
+1. 由于邻接图的随机性，这个算法对于同样k个文档的召回率没有KNN这么高<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-08.png" alt=""></li>
+<li>HNSW<br>
+这个算法的思路是从局部最优推到全局最优，这个算法将节点分为多个层级，对Layer1包含所有的节点，向上递减。从最高层的临接图出发，不断使用ANN算法，在每层中都选出一个最优解。具体包括：<br>
+1. 随机从最顶层选择一个节点，找到顶层最优解<br>
+1. 以上一层的最优解开始，遍历这一层的邻接图<br>
+这个算法的成效非常显著，每一层都能过滤大量的节点，降低复杂度的同时召回率也能得到保证，复杂度的增长率接近对数函数<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-09.png" alt=""><br>
+<strong>下面是一些常见的分块策略，分块（chunking）是一种简单并且能显著提高召回率的方式，简单来说就是将一个文档切碎，以文档中的内容进行向量划分</strong></li>
+<li>Fixed Size<br>
+最简单的分块方式，完全不考虑任何语义信息，非常容易产生一些可读性很差的分块</li>
+<li>Overlapping<br>
+仍以固定长度分块，但分块之间存在重合部分，重合部分可以为分块提高关联性</li>
+<li>Recursive Character Splitting<br>
+递归分块，以某个特定单词进行动态分块，如<code>\n</code> 换行符等</li>
+<li>Sementic Chunking<br>
+语义分块，将每个句子向量化，计算相邻句子的相关性，如果相关性比较强（向量相近），就把他们归为一块</li>
+<li>LLM Chunking<br>
+使用LLM分块，给出大致的分块策略，使用大模型进行智能分块，虽然本质是一个黑盒策略，但随着大模型的调用方式变得廉价，这种方式变得非常具有性价比</li>
+<li>Context Aware Chunking<br>
+这是一种可以叠加在任何分块策略上的优化策略，利用LLM为一些没有语义信息的分块增加上下文信息，增加其被召回的概率<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-10.png" alt=""><br>
+<strong>下面介绍一种提示词重写策略，一般使用这种策略即可满足优化需求，一些高级方式如HIDE，Named Entity Reconization</strong></li>
+<li>Query Rewriting<br>
+通常用于重写用户输入的提示词，使之成为大模型更容易理解的形式，具体策略简单来说就是，先理解用户的原始提示词，然后再利用自己在这一领域的专业知识，重新将提示词用更专业的话术重写<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-11.png" alt=""><br>
+<strong>下面介绍一些常用的Encoder，通过更合理的方式，将Prompt与文档向量化并计算他们的相似度</strong></li>
+<li>Bi-Encoder<br>
+一种预处理的Encoder，文档的向量化和Prompt的向量化是分开的，两者单独计算向量后再求相似度，而且这里处理的向量都是降维的，为了迎合效率<br>
+- 预处理，真正检索的时候速度快<br>
+- 丢失精度，Prompt和文档向量两者并没有深层次的交互</li>
+<li>Cross-Encoder<br>
+一种将Prompt和文档一起向量化的Encoder，两者进行更深层次的交互。具体的交互方式可以参考Transfomer架构，其中的多头注意力机制就是这个算法的关键<br>
+- 不能预计算：文档向量没法提前存好，每来一个新 query 都要和候选文档重新一起过一遍模型<br>
+- 计算量大：所以通常不用来做全量检索（从几百万文档里找候选），而是用作重排（rerank）阶段——先用便宜的 Bi-Encoder/BM25 粗筛出几十到几百个候选，再用 Cross-Encoder 精细打分排序，兼顾效果和效率。</li>
+<li>ColBERT<br>
+一种预处理的Encoder，虽然是预处理，但其粒度更细，将每个文档的语料全部向量化，然后通过与Prompt中所有语料进行对比得出最终相似度<br>
+- 相比Bi-Encoder，ColBERT生成的是原始向量，纬度更高，细节更丰富<br>
+<img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-12.png" alt=""></li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io">m1kasaz</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io/2026/09/04/RAG-Core/">http://m1kasaz.github.io/2026/09/04/RAG-Core/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://m1kasaz.github.io" target="_blank">m1kasaz</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/AI/">AI</a></div><div class="post-share"><div class="social-share" data-image="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/07/19/2026.7.19/" title="2026-7-19"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">2026-7-19</div></div><div class="info-2"><div class="info-item-1">项目思考 12345运行架构：参与建设轻量级 AI Agent 运行时，打通 CLI、Gateway、WebUI、OpenAI-compatible API 四类核心交付入口，将消息总线、Agent Loop、Session、Cron、Heartbeat 等能力解耦并下沉到统一运行时中，实现多形态接入与底层能力的一次开发、多端复用。执行闭环：围绕工具调用型 LLM 执行链路实现多轮推理、流式响应、子代理协作、上下文裁剪与中断恢复等核心能力，形成覆盖消息接入 → 推理执行 → 会话持久化 → 结果分发的完整 Agent 执行闭环，保障复杂任务在长链路下的稳定性与可恢复性。扩展体系：完善多渠道与多模型扩展体系，仓库内置 15 个聊天渠道模块与 35 个 Provider 配置项，并沉淀 Session、Memory、Cron、Heartbeat...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/27/2026.3.27/" title="ai agent开发(持续更新)"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260327215157767.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-27</div><div class="info-item-2">ai agent开发(持续更新)</div></div><div class="info-2"><div class="info-item-1">提示词（prompt） zero-shot：零样本学习，无提示 few-shot：少样本学习，少量示例 检索增强（RAG） 通过构建向量数据库等为大模型提供新的知识库，大模型通过检索这些知识库学习新的知识。 我们可以通过文本嵌入大模型将文本转换成向量，模型会把一段文本拆分成多个维度（抽象语义特征）的数字列表。 进行向量匹配时，主要使用余弦相似度算法来确定两段文本的相似度。  余弦相似度：计算两个向量的夹角。  对于两个 n 维向量 $A = [a_1,a_2,…,a_n]$、$B = [b_1,b_2,…,b_n]$，余弦相似度计算公式为：$$ \cos(\theta) = \frac{\sum_{i=1}^{n} a_i b_i}{\sqrt{\sum_{i=1}^{n} a_i^2} \cdot \sqrt{\sum_{i=1}^{n} b_i^2}} $$  LangChain 三种模型：LLM、聊天模型、 文本转向量： 123456from langchain_community.embeddings import DashScopeEmbeddingsmodel =...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#What-RAG"><span class="toc-number">1.</span> <span class="toc-text">What RAG</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Why-RAG"><span class="toc-number">2.</span> <span class="toc-text">Why RAG</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#How-RAG"><span class="toc-number">3.</span> <span class="toc-text">How RAG</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#How-RAG-execute"><span class="toc-number">3.1.</span> <span class="toc-text">How RAG execute</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#How-RAG-insepct"><span class="toc-number">3.2.</span> <span class="toc-text">How RAG insepct</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#How-improve-RAG"><span class="toc-number">3.3.</span> <span class="toc-text">How improve RAG</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/09/04/RAG-Core/" title="RAG-Core"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="RAG-Core"/></a><div class="content"><a class="title" href="/2026/09/04/RAG-Core/" title="RAG-Core">RAG-Core</a><time datetime="2026-09-03T16:00:00.000Z" title="发表于 2026-09-04 00:00:00">2026-09-04</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/19/2026.7.19/" title="2026-7-19"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026-7-19"/></a><div class="content"><a class="title" href="/2026/07/19/2026.7.19/" title="2026-7-19">2026-7-19</a><time datetime="2026-07-18T16:00:00.000Z" title="发表于 2026-07-19 00:00:00">2026-07-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="LeetCode22：括号生成"/></a><div class="content"><a class="title" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成">LeetCode22：括号生成</a><time datetime="2026-07-17T16:00:00.000Z" title="发表于 2026-07-18 00:00:00">2026-07-18</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/01/2026.4.1/" title="2026.4.1"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.4.1"/></a><div class="content"><a class="title" href="/2026/04/01/2026.4.1/" title="2026.4.1">2026.4.1</a><time datetime="2026-03-31T16:00:00.000Z" title="发表于 2026-04-01 00:00:00">2026-04-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/31/2026.3.31/" title="2026.3.31"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260331155917195.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026.3.31"/></a><div class="content"><a class="title" href="/2026/03/31/2026.3.31/" title="2026.3.31">2026.3.31</a><time datetime="2026-03-30T16:00:00.000Z" title="发表于 2026-03-31 00:00:00">2026-03-31</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png);"><div id="footer-wrap"><div class="copyright">&copy;2025 - 2026 By m1kasaz</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text"><i class="fa-brands fa-gratipay"></i></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  let initFn = window.walineFn || null
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const destroyWaline = ele => ele.destroy()
+
+  const initWaline = (Fn, el = document, path = window.location.pathname) => {
+    const waline = Fn({
+      el: el.querySelector('#waline-wrap'),
+      serverURL: 'https://waline.m1kasaz.top/',
+      pageview: false,
+      dark: 'html[data-theme="dark"]',
+      comment: false,
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyWaline = () => {
+        destroyWaline(waline)
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const loadWaline = (el, path) => {
+    if (initFn) initWaline(initFn, el, path)
+    else {
+      btf.getCSS('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.css')
+        .then(() => import('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.js'))
+        .then(({ init }) => {
+          initFn = init || Waline.init
+          initWaline(initFn, el, path)
+          window.walineFn = initFn
+        })
+    }
+  }
+
+  if (isShuoshuo) {
+    'Waline' === 'Waline'
+      ? window.shuoshuoComment = { loadComment: loadWaline } 
+      : window.loadOtherComment = loadWaline
+    return
+  }
+
+  if ('Waline' === 'Waline' || !false) {
+    if (false) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+    else setTimeout(loadWaline, 0)
+  } else {
+    window.loadOtherComment = loadWaline
+  }
+})()</script></div><div class="aplayer no-destroy" data-id="8505096637" data-server="tecent" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><link rel="stylesheet" href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.js"></script><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/meting/2.0.1/Meting.min.js"></script><script>(() => {
+  const destroyAplayer = () => {
+    if (window.aplayers) {
+      for (let i = 0; i < window.aplayers.length; i++) {
+        if (!window.aplayers[i].options.fixed) {
+          window.aplayers[i].destroy()
+        }
+      }
+    }
+  }
+
+  const runMetingJS = () => {
+    typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+  }
+
+  btf.addGlobalFn('pjaxSend', destroyAplayer, 'destroyAplayer')
+  btf.addGlobalFn('pjaxComplete', loadMeting, 'runMetingJS')
+})()</script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true 
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
