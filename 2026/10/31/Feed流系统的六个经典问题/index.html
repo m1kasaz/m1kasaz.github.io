@@ -1,0 +1,436 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Feed流系统的六个经典问题 | m1kasaz</title><meta name="author" content="m1kasaz"><meta name="copyright" content="m1kasaz"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="Feed流系统的六个经典问题与解法：深分页、翻页重复&#x2F;漏看、缓存穿透、Redis大Key、推拉模式取舍、fanout同步阻塞，附架构图与代码示例。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Feed流系统的六个经典问题">
+<meta property="og:url" content="http://m1kasaz.github.io/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="m1kasaz">
+<meta property="og:description" content="Feed流系统的六个经典问题与解法：深分页、翻页重复&#x2F;漏看、缓存穿透、Redis大Key、推拉模式取舍、fanout同步阻塞，附架构图与代码示例。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png">
+<meta property="article:published_time" content="2026-10-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-30T16:00:00.000Z">
+<meta property="article:author" content="m1kasaz">
+<meta property="article:tag" content="系统设计">
+<meta property="article:tag" content="Feed流">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="缓存">
+<meta property="article:tag" content="性能优化">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Feed流系统的六个经典问题",
+  "url": "http://m1kasaz.github.io/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/",
+  "image": "https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png",
+  "datePublished": "2026-10-30T16:00:00.000Z",
+  "dateModified": "2026-10-30T16:00:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "m1kasaz",
+      "url": "http://m1kasaz.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://m1kasaz.github.io/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Feed流系统的六个经典问题',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/678041.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://java-m1kasa.oss-cn-beijing.aliyuncs.com/headshot.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">m1kasaz</span></a><a class="nav-page-title" href="/"><span class="site-name">Feed流系统的六个经典问题</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Feed流系统的六个经典问题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-30T16:00:00.000Z" title="发表于 2026-10-31 00:00:00">2026-10-31</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-30T16:00:00.000Z" title="更新于 2026-10-31 00:00:00">2026-10-31</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1/">系统设计</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>Feed 流系统的架构与六个经典问题。</p>
+<p><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png" alt="Feed流系统架构图"></p>
+<p>存在的问题：</p>
+<ol>
+<li>
+<p><strong>深分页问题</strong></p>
+<p>现象：用户一次feed流拉了500多页数据，redis放不下只能去DB里查，这时候MySQL要执行耗时很长的命令</p>
+<p>出现的问题：</p>
+<ol>
+<li>用户层面：数据很慢，或者根本拿不到数据</li>
+<li>C端：超时重试，一直占着连接池，资源被浪费</li>
+<li>Server侧：同C端</li>
+<li>DB侧：进行无意义的回表，整个磁盘IO队列阻塞</li>
+</ol>
+ <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 第 500 页：数据库先扫到第 10000 行，再往后取 20 行，前 10000 行白扫</span></span><br><span class="line"><span class="keyword">SELECT</span> v.<span class="operator">*</span> <span class="keyword">FROM</span> feed_item f <span class="keyword">JOIN</span> video v <span class="keyword">ON</span> f.video_id <span class="operator">=</span> v.id</span><br><span class="line"><span class="keyword">WHERE</span> f.user_id <span class="operator">=</span> ? <span class="keyword">ORDER</span> <span class="keyword">BY</span> f.publish_ts <span class="keyword">DESC</span> LIMIT <span class="number">20</span> <span class="keyword">OFFSET</span> <span class="number">10000</span></span><br></pre></td></tr></table></figure>
+<p><a target="_blank" rel="noopener" href="https://javaguide.cn/high-performance/deep-pagination-optimization.html#%E4%BB%80%E4%B9%88%E6%98%AF%E6%B7%B1%E5%BA%A6%E5%88%86%E9%A1%B5-%E6%80%8E%E4%B9%88%E5%AF%BC%E8%87%B4%E7%9A%84">深度分页介绍及优化建议</a></p>
+<p>解决办法：</p>
+<ol>
+<li>
+<p>禁止深度分页，C端直接设置最大分页数，超过这个分页数禁止请求</p>
+</li>
+<li>
+<p>建立游标，每次请求结束都带着一个NextID，用于直接跳到下一页的开始</p>
+ <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- cursor = &quot;publish_ts:video_id&quot;，由服务端编码、客户端原样回传</span></span><br><span class="line"><span class="keyword">SELECT</span> id, publish_ts <span class="keyword">FROM</span> feed_item</span><br><span class="line"><span class="keyword">WHERE</span> user_id <span class="operator">=</span> ? <span class="keyword">AND</span> (publish_ts, video_id) <span class="operator">&lt;</span> (?, ?)   <span class="comment">-- 比锚更旧的</span></span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> publish_ts <span class="keyword">DESC</span>, video_id <span class="keyword">DESC</span> LIMIT <span class="number">20</span></span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>看到旧/重复视频</strong></p>
+<p>现象：用户漏/重复看视频</p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">第 1 页: OFFSET 0   → [新视频A, v1, v2, ..., v19]   -- A 刚被 删除</span><br><span class="line">-- 用户看第 1 页的几秒里，另一个 UP 主发了 B，插到最前面：</span><br><span class="line">第 2 页: OFFSET 20  → 整列后移一位，返回 [v19, v20, ...] -- v19 第 1 页出现过</span><br></pre></td></tr></table></figure>
+<p>插入一行，OFFSET 20 指向的内容就从 v20 变成 v19，重复和漏看是同一个 bug 的两面。</p>
+<p>本质是通过分页参数控制查询时，如果数据有增删，就会对后续的查询造成影响</p>
+<p>解决办法：</p>
+<ol>
+<li>基于时间过滤掉旧的数据，在本地进行视频去重</li>
+<li>加入游标，不需要关注数据变化，直接从下一条开始取数</li>
+</ol>
+</li>
+<li>
+<p><strong>缓存穿透</strong></p>
+<p>现象：某个大V的Key有几百万个用户一直访问，但是这个大V的Key突然过期了，几十上百万流量直接打DB，导致数据库崩溃</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">feed = redis.Get(<span class="string">&quot;feed_page:&#123;uid&#125;&quot;</span>)</span><br><span class="line"><span class="keyword">if</span> feed == <span class="literal">nil</span>:                          # key 过期瞬间，所有并发请求同时走到这里</span><br><span class="line">    feed = build(uid)                    # 慢路径：收件箱 + 大V合并，几十毫秒</span><br><span class="line">    redis.Set(<span class="string">&quot;feed_page:&#123;uid&#125;&quot;</span>, feed, <span class="number">300</span>)</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ol>
+<li>
+<p>热Key永不过期：热点Key不设置过期时间，靠定时任务更新缓存</p>
+ <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 后台定时任务：遍历全量 feed_page key 逐个重建</span><br><span class="line">for uid in all_users():                            # 几十万个 key 逐个点名</span><br><span class="line">    redis.Set(&quot;feed_page:&quot;+uid, build(uid), ttl=0) # ttl=0 永不过期，靠任务刷</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>逻辑过期：设置一个时间戳，每次访问Key的时候顺便对比一下，如果过期了就重新拉一次缓存</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">feed = redis.Get(<span class="string">&quot;feed_page:&#123;uid&#125;&quot;</span>)</span><br><span class="line"><span class="keyword">if</span> feed != <span class="literal">nil</span> &amp;&amp; !feed.Expired():       # 没过期直接用</span><br><span class="line">    <span class="keyword">return</span> feed</span><br><span class="line"># 到期不删 key，直接返回旧值并异步刷新；重建交给单飞保证只发生一次</span><br><span class="line">val, _, _ := singleflight.Do(<span class="string">&quot;feed:&quot;</span>+uid, <span class="function"><span class="keyword">func</span><span class="params">()</span></span> <span class="keyword">interface</span>&#123;&#125; &#123;</span><br><span class="line">    fresh := build(uid)</span><br><span class="line">    redis.Set(<span class="string">&quot;feed_page:&#123;uid&#125;&quot;</span>, withExpiry(fresh, <span class="number">300</span>), <span class="number">0</span>)  # <span class="number">0</span>=永不过期，逻辑过期</span><br><span class="line">    <span class="keyword">return</span> fresh</span><br><span class="line">&#125;)</span><br><span class="line"><span class="keyword">return</span> val</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>大Key问题</strong></p>
+<p>现象：关注 5000 个 UP 主的深度用户，收件箱攒了上亿条记录，Redis 内存占用居高不下，运维被迫频繁扩容。</p>
+<p>大Key的定义：</p>
+<table>
+<thead>
+<tr>
+<th><strong>数据结构</strong></th>
+<th><strong>判定阈值建议</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>String</strong></td>
+<td>单个 value 内存占用 <strong>&gt; 10 KB</strong>（更严格的标准为 &gt; 50 KB）</td>
+</tr>
+<tr>
+<td><strong>Hash / Set / ZSet / List</strong></td>
+<td>元素数量 <strong>&gt; 5,000 个</strong>，或总内存占用 <strong>&gt; 10 MB</strong></td>
+</tr>
+</tbody>
+</table>
+<p>基于命令的分析方法：</p>
+<ul>
+<li><strong><code>redis-cli --bigkeys</code></strong>
+<ul>
+<li><strong>原理</strong>：底层通过 <code>SCAN</code> 命令渐进式遍历所有 key，不会阻塞主线程。</li>
+<li><strong>局限</strong>：它只按<strong>数据类型各汇报一个最大 key</strong>（例如仅输出“最大的 String 是哪个，最大的 List 是哪个”），且针对容器类型（Hash/Set/ZSet/List）统计的是<strong>元素数量</strong>而非实际字节大小，无法列出所有超标的大 key。</li>
+</ul>
+</li>
+<li><strong><code>redis-cli --memkeys</code>（Redis 6.0+）</strong>
+<ul>
+<li><strong>原理</strong>：同样通过 <code>SCAN</code> 遍历，但通过 <code>MEMORY USAGE</code> 对比实际物理内存占用。</li>
+<li><strong>局限</strong>：同样只记录各类型的全局前几名，且对极大的 key 计算 <code>MEMORY USAGE</code> 时会有轻微性能开销。</li>
+</ul>
+</li>
+<li><strong><code>MEMORY USAGE &lt;key&gt;</code>（Redis 4.0+）</strong>
+<ul>
+<li><strong>原理</strong>：用于精准查看单个 key 所占用的内存字节数（采样估算或遍历）。</li>
+</ul>
+</li>
+</ul>
+<p>自动化分析：</p>
+<ul>
+<li>离线解析 RDB 快照（最推荐、主流做法）</li>
+<li>云厂商托管 Redis（自带自动化能力）</li>
+</ul>
+<p>影响面：</p>
+<ol>
+<li>阻塞单线程，引发服务级联超时</li>
+<li>网卡打满，单机的其他服务被拖垮</li>
+<li>从库因传输超时断开与主库的连接，主从失效</li>
+</ol>
+<p>解决办法：</p>
+<ol>
+<li>
+<p>单个用户设置桶上限，超出上限部分通过DB读取</p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ZADD inbox:&#123;uid&#125; &#123;publish_ts&#125; &#123;vid&#125;</span><br><span class="line">ZREMRANGEBYRANK inbox:&#123;uid&#125; 0 -501   -- 只留最新 500 条，从旧端删</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>设置Key过期时间，定期删除桶消息</p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ZADD inbox:&#123;uid&#125; &#123;publish_ts&#125; &#123;vid&#125;</span><br><span class="line">ZREMRANGEBYRANK inbox:&#123;uid&#125; 0 -501   -- 只留最新 500 条，从旧端删</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>推/拉模式</strong></p>
+<p>现象：一个关注 800 人的普通用户，每次下拉刷新 feed 要 3 秒，接口 P99 全线飘红。</p>
+ <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">following = SELECT followee_id FROM following WHERE user_id = ?  -- 查出 <span class="number">800</span> 个关注</span><br><span class="line"><span class="keyword">for</span> uid <span class="keyword">in</span> following:                                            -- 循环 <span class="number">800</span> 次</span><br><span class="line">    videos = SELECT * FROM video WHERE author_id = uid</span><br><span class="line">             ORDER BY created_at DESC LIMIT <span class="number">20</span>                    -- 每人查一次</span><br><span class="line">feed = merge(all_videos)                                        -- 内存归并 <span class="number">800</span> 路</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<ol>
+<li>
+<p>查询归并</p>
+ <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> video <span class="keyword">WHERE</span> author_id <span class="keyword">IN</span> (:<span class="number">800</span>个id)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> publish_ts <span class="keyword">DESC</span> LIMIT <span class="number">800</span><span class="operator">*</span><span class="number">20</span>   <span class="comment">-- 拉回来再内存归并</span></span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>加一层缓存，结合推模式</p>
+ <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 写路径：每个粉丝一条 ZADD（大 V 1000 万粉丝 = 1000 万次写）</span></span><br><span class="line"><span class="keyword">for</span> fan_id <span class="keyword">in</span> get_fans(author_id):</span><br><span class="line">    redis.ZADD(<span class="string">&quot;inbox:&quot;</span>+fan_id, publish_ts, vid)</span><br><span class="line"><span class="comment"># 读路径：一次命令拿一页</span></span><br><span class="line">ZREVRANGEBYSCORE inbox:&#123;uid&#125; &#123;cursor.<span class="built_in">max</span>&#125; &#123;cursor.<span class="built_in">min</span>&#125; LIMIT <span class="number">0</span> <span class="number">20</span></span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>小作者推</p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 读路径：一次命令拿一页</span><br><span class="line">ZREVRANGEBYSCORE inbox:&#123;uid&#125; &#123;cursor.max&#125; &#123;cursor.min&#125; LIMIT 0 20</span><br><span class="line"></span><br><span class="line">func merge(inbox_items, pull_items):</span><br><span class="line">    result = []</span><br><span class="line">    while len(result) &lt; 20 &amp;&amp; (inbox_items || pull_items):</span><br><span class="line">        result.append(older_head_of(inbox_items, pull_items))  # 取两边较旧的头</span><br><span class="line">    return result</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>fanout推同步阻塞结果</strong></p>
+<p>现象：千万粉 UP 主点下「发布」，页面转圈 30 秒后报超时；视频其实已经入库，但粉丝几小时后才在 feed 里看到。</p>
+<p>fanout 被放进了发布请求的事务里同步执行：</p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">publish(video):</span><br><span class="line">    INSERT INTO video VALUES (...)              -- 入库</span><br><span class="line">    for fan_id in get_fans(video.author_id):    -- 1000 万个粉丝</span><br><span class="line">        redis.ZADD(inbox(fan_id), ts, video.id) -- 逐个写收件箱</span><br><span class="line">    return ok</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<p><strong>发布只发事件到 MQ，fanout 完全异步化（选定）：</strong></p>
+ <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">publish(video):</span><br><span class="line">    INSERT INTO video VALUES (...)   -- 只做入库</span><br><span class="line">    mq.Publish(&quot;video.published&quot;, &#123;vid, author_id, publish_ts&#125;)  -- 毫秒级返回</span><br><span class="line">    return ok</span><br></pre></td></tr></table></figure></li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io">m1kasaz</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://m1kasaz.github.io/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/">http://m1kasaz.github.io/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://m1kasaz.github.io" target="_blank">m1kasaz</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1/">系统设计</a><a class="post-meta__tags" href="/tags/Feed%E6%B5%81/">Feed流</a><a class="post-meta__tags" href="/tags/Redis/">Redis</a><a class="post-meta__tags" href="/tags/%E7%BC%93%E5%AD%98/">缓存</a><a class="post-meta__tags" href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化</a></div><div class="post-share"><div class="social-share" data-image="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/27/%E8%BD%AF%E8%80%83-%E6%9E%B6%E6%9E%84%E9%A3%8E%E6%A0%BC%E4%B8%8E%E8%AE%BA%E6%96%87%E6%A8%A1%E6%9D%BF/" title="软考：软件架构风格与论文模板"><img class="cover" src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rk-arch-pipe.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">软考：软件架构风格与论文模板</div></div><div class="info-2"><div class="info-item-1">一、质量属性：敏感点与权衡点  敏感点：为了实现某种特定的质量属性，一个或多个构建所具有的特性 权衡点：影响多个质量属性的特性，是多个质量属性的敏感点  二、软件架构风格 1. 数据流风格 批处理风格   场景：日志处理、每日的数据清洗 优点：实现简单、便于调试、可处理大批数据 缺点：实时性差、资源利用率低  管道-过滤器   优点：并行可插拔、易维护、可拓展 缺点：不适合交互、单向数据流不适合复杂业务系统、IO 传输有性能开销 场景：Unix 命令、编译器、音频处理、数据流处理  2. 调用/返回风格 主程序/子程序   场景：小型软件 优点：结构简单、开发成本低、易理解 缺点：耦合度高、拓展性差  层次  定义：每一层根据职责不同划分不同的层次，下层为上层提供服务，上层仅依赖下层，禁止跨层调用或反向依赖 场景：MVC...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="waline-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/" title="Feed流系统的六个经典问题"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Feed流系统的六个经典问题"/></a><div class="content"><a class="title" href="/2026/10/31/Feed%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%85%AD%E4%B8%AA%E7%BB%8F%E5%85%B8%E9%97%AE%E9%A2%98/" title="Feed流系统的六个经典问题">Feed流系统的六个经典问题</a><time datetime="2026-10-30T16:00:00.000Z" title="发表于 2026-10-31 00:00:00">2026-10-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/27/%E8%BD%AF%E8%80%83-%E6%9E%B6%E6%9E%84%E9%A3%8E%E6%A0%BC%E4%B8%8E%E8%AE%BA%E6%96%87%E6%A8%A1%E6%9D%BF/" title="软考：软件架构风格与论文模板"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rk-arch-pipe.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="软考：软件架构风格与论文模板"/></a><div class="content"><a class="title" href="/2026/10/27/%E8%BD%AF%E8%80%83-%E6%9E%B6%E6%9E%84%E9%A3%8E%E6%A0%BC%E4%B8%8E%E8%AE%BA%E6%96%87%E6%A8%A1%E6%9D%BF/" title="软考：软件架构风格与论文模板">软考：软件架构风格与论文模板</a><time datetime="2026-10-26T16:00:00.000Z" title="发表于 2026-10-27 00:00:00">2026-10-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/09/04/RAG-Core/" title="RAG-Core"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/rag-core-00.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="RAG-Core"/></a><div class="content"><a class="title" href="/2026/09/04/RAG-Core/" title="RAG-Core">RAG-Core</a><time datetime="2026-09-03T16:00:00.000Z" title="发表于 2026-09-04 00:00:00">2026-09-04</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/19/2026.7.19/" title="2026-7-19"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="2026-7-19"/></a><div class="content"><a class="title" href="/2026/07/19/2026.7.19/" title="2026-7-19">2026-7-19</a><time datetime="2026-07-18T16:00:00.000Z" title="发表于 2026-07-19 00:00:00">2026-07-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成"><img src="https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/image-20260330194218064.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="LeetCode22：括号生成"/></a><div class="content"><a class="title" href="/2026/07/18/2026.7.18/" title="LeetCode22：括号生成">LeetCode22：括号生成</a><time datetime="2026-07-17T16:00:00.000Z" title="发表于 2026-07-18 00:00:00">2026-07-18</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://m1kasaz-typora.oss-cn-beijing.aliyuncs.com/images/feed-arch.png);"><div id="footer-wrap"><div class="copyright">&copy;2025 - 2026 By m1kasaz</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text"><i class="fa-brands fa-gratipay"></i></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  let initFn = window.walineFn || null
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const destroyWaline = ele => ele.destroy()
+
+  const initWaline = (Fn, el = document, path = window.location.pathname) => {
+    const waline = Fn({
+      el: el.querySelector('#waline-wrap'),
+      serverURL: 'https://waline.m1kasaz.top/',
+      pageview: false,
+      dark: 'html[data-theme="dark"]',
+      comment: false,
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyWaline = () => {
+        destroyWaline(waline)
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const loadWaline = (el, path) => {
+    if (initFn) initWaline(initFn, el, path)
+    else {
+      btf.getCSS('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.css')
+        .then(() => import('https://cdn.jsdelivr.net/npm/@waline/client/dist/waline.min.js'))
+        .then(({ init }) => {
+          initFn = init || Waline.init
+          initWaline(initFn, el, path)
+          window.walineFn = initFn
+        })
+    }
+  }
+
+  if (isShuoshuo) {
+    'Waline' === 'Waline'
+      ? window.shuoshuoComment = { loadComment: loadWaline } 
+      : window.loadOtherComment = loadWaline
+    return
+  }
+
+  if ('Waline' === 'Waline' || !false) {
+    if (false) btf.loadComment(document.getElementById('waline-wrap'),loadWaline)
+    else setTimeout(loadWaline, 0)
+  } else {
+    window.loadOtherComment = loadWaline
+  }
+})()</script></div><div class="aplayer no-destroy" data-id="8505096637" data-server="tecent" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><link rel="stylesheet" href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/aplayer/1.10.1/dist/APlayer.min.js"></script><script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/meting/2.0.1/Meting.min.js"></script><script>(() => {
+  const destroyAplayer = () => {
+    if (window.aplayers) {
+      for (let i = 0; i < window.aplayers.length; i++) {
+        if (!window.aplayers[i].options.fixed) {
+          window.aplayers[i].destroy()
+        }
+      }
+    }
+  }
+
+  const runMetingJS = () => {
+    typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+  }
+
+  btf.addGlobalFn('pjaxSend', destroyAplayer, 'destroyAplayer')
+  btf.addGlobalFn('pjaxComplete', loadMeting, 'runMetingJS')
+})()</script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => fn())
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true 
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
